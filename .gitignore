@@ -10,3 +10,4 @@ gen
 /FPM.txt
 _in_progress/**
 prod_results/
+*settings.local.json
