@@ -8,7 +8,7 @@
   "base_sha": "23c5b90c42c44c4189fda40bab03f4e691b2aca6",
   "head_sha": "8488eaee5b6040d81228f5bdcc07ca02b086747b",
   "review_date": "2026-11-05",
-  "verdict": "NOT READY TO MERGE - important: I1, I2, I3",
+  "verdict": "READY TO MERGE - 16 of 16 findings resolved, 0 bubbled",
   "stats": {
     "additions": 365,
     "deletions": 51,
@@ -312,6 +312,137 @@
         "result": "SKIPPED (no CICD/test-infra paths in PR)"
       }
     },
-    "pre_fix_time": "pending - to be populated in Phase 4"
-  }
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0005-modify-fpm-def",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0005-modify-fpm-def",
+        "head_ref_name": "0005-modify-fpm-def",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "6790768af46789dc5ef0401896fda84e4caf41b3",
+        "head_sha": "82ae7fad044cc070a0d578ac5218f1577fccb83b",
+        "base_ancestor_command": "git merge-base --is-ancestor 6790768af46789dc5ef0401896fda84e4caf41b3 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 82ae7fad044cc070a0d578ac5218f1577fccb83b HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "82ae7fa (working-tree snapshot; developer commits) - run.py now prints the copy ERROR lines and 'Failed.' to sys.stderr; test_failed_copy_exits_1 asserts on capsys err instead of out; Removed the print of ERROR lines in ProdCopier._copy_folder so copy failures are reported only through CopyResult.errors; run.py stderr routing and test belong to the other part"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "82ae7fa (working-tree snapshot; developer commits) - _get_repo_root uses Path(__file__).resolve() with no dead cwd fallback and builds its error from start_path; _bootstrap_sys_path raises FileNotFoundError, uses scripts_dir for the Path, drops the inner import sys, and inserts only the repo root once"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "82ae7fa (working-tree snapshot; developer commits) - Repo-root search kept but accepts .git as a directory or a worktree/submodule file via (parent / '.git').exists(); removed _is_git_folder, _search_down_for, _GIT_FOLDER_CONTENTS, the 'Parent:' debug print and the misleading '# Preview' comment; tests/test_run_exit_code.py: no edit needed, it goes through the repaired main()"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "82ae7fa (working-tree snapshot; developer commits) - Module and load_project docstrings now name project_definitions/ (sibling of conversion/), usage example is load_project(\"fpm\", \"v3.17.2\"), and both note tracked_only (default True) requires git on PATH and a repository SOURCE_ROOT"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "82ae7fa (working-tree snapshot; developer commits) - conversion/prod_deploy.py: cited only for _generate_project_version_folder_name, which already produces FPM_3_17_2; the help text fix lives in run.py (other part); argparse description now names <DEST_ROOT>/FPM_<version with dots as underscores>, e.g. FPM_3_17_2"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "82ae7fa (working-tree snapshot; developer commits) - Added module skipif when git is absent and an autouse fixture setting GIT_CEILING_DIRECTORIES to tmp_path and removing GIT_DIR/GIT_WORK_TREE via monkeypatch"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "82ae7fa (working-tree snapshot; developer commits) - Re-added reference_modules/** and toolbox_figures/** to the reference folder's denied list so they stay out of prod."
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "82ae7fa (working-tree snapshot; developer commits) - _resolve_version wraps input() in try/except EOFError, treats EOF as an empty answer (stderr message, SystemExit(2)); docstring mentions EOF; added test_eof_on_prompt_exits_2"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "82ae7fa (working-tree snapshot; developer commits) - removed hasattr TARGET_VERSION test; fake load_project now records its (name, version) args; new tests assert a CLI v1.2.3 reaches load_project without calling input(), and a prompted version reaches it too"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "82ae7fa (working-tree snapshot; developer commits) - fake_copy fixture builds a fresh _FakeCopier subclass per test (own result and load_calls) and patches ProdCopier with it"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "82ae7fa (working-tree snapshot; developer commits) - fake_copy fixture adds monkeypatch.setattr(sys, 'path', list(sys.path)) so runpy-inserted entries are discarded at teardown"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "82ae7fa (working-tree snapshot; developer commits) - Per developer policy (warn and copy): with tracked_only, ProdCopier now runs git status --porcelain -z --untracked-files=no -- . on SOURCE_ROOT and prints a stderr WARNING listing tracked files with staged or unstaged changes, then copies anyway (new _dirty_tracked_paths, _parse_porcelain_z, _warn_dirty, ProdCopier._load_tracked); ProdConfig docstring notes the warning; new tests/test_prod_deploy_dirty.py covers unstaged, staged, clean-tree and rename parsing. Tests not run: brief lists no batched command and the project venv has no pytest installed."
+    },
+    {
+      "id": "M4",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-05",
+      "evidence": "82ae7fa (working-tree snapshot; developer commits) - closed, no action: developer edits the PR description (tracked_only default-on, non-repository source is an error); no file change"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "82ae7fa (working-tree snapshot; developer commits) - pytest added to Pipfile dev-packages; conftest.py moved into the tests package with tests/__init__.py so pytest puts the repo root on sys.path (outside fixer waves)"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "82ae7fa (working-tree snapshot; developer commits) - tests/__init__.py + tests/conftest.py make tests a package; the repo root is inserted on sys.path, so conversion imports under plain pytest (outside fixer waves)"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "82ae7fa (working-tree snapshot; developer commits) - '# Preview' comment removed from run.py main(); copy ERROR lines print once, to stderr only (prod_deploy._copy_folder no longer prints) (outside fixer waves)"
+    }
+  ]
 }

@@ -9,6 +9,7 @@ jsonschema = "*"
 pydantic = ">=2"
 
 [dev-packages]
+pytest = "*"
 
 [requires]
 python_version = "3.13"

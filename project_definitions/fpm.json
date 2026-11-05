@@ -19,7 +19,8 @@
       "name": "reference",
       "required": false,
       "allowed": [],
-      "denied": ["env/**", "db/**", "git_curated/**", "esri_docs/**",
+      "denied": ["reference_modules/**", "toolbox_figures/**",
+                 "env/**", "db/**", "git_curated/**", "esri_docs/**",
                  "field_maps/gdb_schemas/**", "esriCRS/_runtime_cache.json"]
     }
   ]
