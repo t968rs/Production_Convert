@@ -16,9 +16,10 @@ from __future__ import annotations
 import fnmatch
 import re
 import shutil
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import FrozenSet, List, Optional, Tuple
 from conversion.project_model import ProjectPaths, ProdConfig, FolderSpec
 
 
@@ -147,6 +148,37 @@ def _is_allowed(name: str, rel_posix: str, allowed: List[str]) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Git tracking
+# ---------------------------------------------------------------------------
+
+def _tracked_paths(source_root: Path) -> FrozenSet[str]:
+    """
+    Return the posix paths, relative to source_root, that git tracks there.
+
+    Reads the index (``git ls-files``), so a staged file counts as tracked.
+    Raises RuntimeError when git fails, e.g. source_root is not a repository.
+    """
+    proc = subprocess.run(
+        ["git", "-C", str(source_root), "ls-files", "-z"],
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        detail = proc.stderr.decode("utf-8", "replace").strip()
+        raise RuntimeError(f"git ls-files failed in {source_root}: {detail}")
+    return frozenset(p for p in proc.stdout.decode("utf-8").split("\0") if p)
+
+
+def _scope_tracked(
+    tracked: Optional[FrozenSet[str]], folder_name: str
+) -> Optional[FrozenSet[str]]:
+    """Re-root tracked paths at one folder; None (no filtering) passes through."""
+    if tracked is None:
+        return None
+    prefix = folder_name.strip("/") + "/"
+    return frozenset(p[len(prefix):] for p in tracked if p.startswith(prefix))
+
+
+# ---------------------------------------------------------------------------
 # Recursive walk (prunes denied directories before descending)
 # ---------------------------------------------------------------------------
 
@@ -155,10 +187,19 @@ def _walk_folder(
     local_denied: List[str],
     global_denied: List[str],
     allowed: List[str],
-) -> List[Path]:
+    tracked: Optional[FrozenSet[str]] = None,
+) -> Tuple[List[Path], List[Path]]:
+    """
+    Return (files to copy, untracked files left out).
+
+    tracked holds paths relative to folder_root; None disables the git filter.
+    """
     acc: List[Path] = []
-    _recurse(folder_root, folder_root, local_denied, global_denied, allowed, acc)
-    return acc
+    untracked: List[Path] = []
+    _recurse(
+        folder_root, folder_root, local_denied, global_denied, allowed, tracked, acc, untracked
+    )
+    return acc, untracked
 
 
 def _recurse(
@@ -167,19 +208,26 @@ def _recurse(
     local_denied: List[str],
     global_denied: List[str],
     allowed: List[str],
+    tracked: Optional[FrozenSet[str]],
     acc: List[Path],
+    untracked: List[Path],
 ) -> None:
     for item in sorted(dir_path.iterdir()):
         rel_posix = item.relative_to(root).as_posix()
         if item.is_dir():
             if not _is_denied(item.name, rel_posix, local_denied, global_denied):
-                _recurse(item, root, local_denied, global_denied, allowed, acc)
+                _recurse(
+                    item, root, local_denied, global_denied, allowed, tracked, acc, untracked
+                )
         elif item.is_file():
             if (
                 not _is_denied(item.name, rel_posix, local_denied, global_denied)
                 and _is_allowed(item.name, rel_posix, allowed)
             ):
-                acc.append(item)
+                if tracked is None or rel_posix in tracked:
+                    acc.append(item)
+                else:
+                    untracked.append(item)
 
 
 # ---------------------------------------------------------------------------
@@ -207,11 +255,18 @@ class ProdCopier:
         self._paths = paths
         self._dry_run = dry_run
         self._clean_dest = clean_dest
+        self._tracked: Optional[FrozenSet[str]] = None
 
     def run(self) -> CopyResult:
         errors = validate_source(self._cfg, self._paths)
         if errors:
             return CopyResult((), (), (), tuple(errors))
+
+        if self._cfg.tracked_only:
+            try:
+                self._tracked = _tracked_paths(self._paths.source_root)
+            except (OSError, RuntimeError) as exc:
+                return CopyResult((), (), (), (str(exc),))
 
         if self._clean_dest and not self._dry_run:
             if self._paths.dest_root.exists():
@@ -245,14 +300,15 @@ class ProdCopier:
         self, spec: FolderSpec
     ) -> Tuple[List[Path], List[Path], List[str]]:
         src_root = self._paths.source_root / spec.name
-        files = _walk_folder(
+        files, untracked = _walk_folder(
             src_root,
             list(spec.denied),
             list(self._cfg.global_denied),
             list(spec.allowed),
+            _scope_tracked(self._tracked, spec.name),
         )
         copied: List[Path] = []
-        skipped: List[Path] = []
+        skipped: List[Path] = list(untracked)
         errors: List[str] = []
         for src_file in files:
             rel = src_file.relative_to(self._paths.source_root)
@@ -278,6 +334,9 @@ class ProdCopier:
                 skipped.append(item)
                 continue
             if _is_denied(item.name, item.name, [], list(self._cfg.global_denied)):
+                skipped.append(item)
+                continue
+            if self._tracked is not None and item.name not in self._tracked:
                 skipped.append(item)
                 continue
             dst = self._paths.dest_root / item.name
