@@ -45,6 +45,11 @@ class ProdConfig(BaseModel):
     global_denied applies across all folders and top-level files.
     Patterns without "/" are matched against the filename only.
     Patterns with "/" or "**" are matched against the full relative posix path.
+
+    tracked_only restricts the copy to files git tracks in the source repo
+    (``git ls-files``); untracked and ignored files are reported as skipped.
+    The copy reads working-tree bytes, so tracked files with uncommitted
+    changes (staged or not) are listed in a warning on stderr and copied anyway.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -52,6 +57,7 @@ class ProdConfig(BaseModel):
     folders: List[FolderSpec]
     global_denied: List[str] = Field(default_factory=list)
     top_level_files: List[str] = Field(default_factory=list)
+    tracked_only: bool = True
 
     # Relative path from dest_root to the file containing _debug_override.
     debug_override_rel: str = "fpm/__init__.py"
