@@ -1,7 +1,9 @@
+import argparse
+import sys
 from pathlib import Path
 from functools import lru_cache
+from typing import List, Optional
 
-TARGET_VERSION = "v3.17.1-beta"
 _GIT_FOLDER_CONTENTS = {"config", "HEAD", "index"}
 _REPO_SCRIPTS_FOLDER_NAME = "conversion"
 
@@ -40,8 +42,58 @@ def _bootstrap_sys_path(scripts_folder: str = _REPO_SCRIPTS_FOLDER_NAME):
 
 
 
-def main():
-    target_version = input("Please enter the target version (e.g. v3.17.1-beta): ") or TARGET_VERSION
+def _get_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+    """
+    Parse the command line. The target version is given positionally or by flag:
+
+        run.py v3.17.2
+        run.py -v v3.17.2            run.py -vv3.17.2
+        run.py --version v3.17.2     run.py --version=v3.17.2
+        run.py --target-version v3.17.2  (or --target_version)
+        run.py -- v3.17.2
+
+    Unknown flags exit with status 2 (argparse usage error).
+    """
+    parser = argparse.ArgumentParser(
+        prog="run.py",
+        description="Copy the fpm production files into prod_results/FPM_<version>.",
+    )
+    parser.add_argument(
+        "version",
+        nargs="?",
+        help="target version, e.g. v3.17.2; prompted for when omitted",
+    )
+    parser.add_argument(
+        "-v", "--version", "--target-version", "--target_version",
+        dest="version_flag",
+        metavar="VERSION",
+        help="target version (same as the positional argument)",
+    )
+    return parser.parse_args(argv)
+
+
+def _resolve_version(args: argparse.Namespace) -> str:
+    """
+    Return the target version from the parsed args, else from an input() prompt.
+
+    Exits with status 2 when the positional and flag values disagree, or when the
+    prompt is answered with an empty line.
+    """
+    given = {v.strip() for v in (args.version, args.version_flag) if v and v.strip()}
+    if len(given) > 1:
+        print(f"Conflicting versions given: {sorted(given)}", file=sys.stderr)
+        raise SystemExit(2)
+    if given:
+        return given.pop()
+    answer = input("Please enter the target version (e.g. v3.17.2): ").strip()
+    if not answer:
+        print("No target version given.", file=sys.stderr)
+        raise SystemExit(2)
+    return answer
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    target_version = _resolve_version(_get_args(argv))
 
     _bootstrap_sys_path()
     from conversion.prod_deploy import load_project, ProdCopier
@@ -53,13 +105,18 @@ def main():
     result = ProdCopier(cfg, paths, dry_run=False).run()
 
     print(f"{len(result.copied)} files copied.")
-    assert result.ok, result.errors
 
-    if result.ok:
-        for sk in result.skipped:
-            print(f"\tSkipped: {sk}")
-        print("Success!")
+    if not result.ok:
+        for err in result.errors:
+            print(f"\tERROR: {err}")
+        print("Failed.")
+        return 1
+
+    for sk in result.skipped:
+        print(f"\tSkipped: {sk}")
+    print("Success!")
+    return 0
 
 if __name__ == "__main__":
-    SystemExit(main())
+    raise SystemExit(main())
 
