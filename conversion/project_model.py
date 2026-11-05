@@ -48,6 +48,8 @@ class ProdConfig(BaseModel):
 
     tracked_only restricts the copy to files git tracks in the source repo
     (``git ls-files``); untracked and ignored files are reported as skipped.
+    The copy reads working-tree bytes, so tracked files with uncommitted
+    changes (staged or not) are listed in a warning on stderr and copied anyway.
     """
 
     model_config = ConfigDict(frozen=True)

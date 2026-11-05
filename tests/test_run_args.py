@@ -49,5 +49,11 @@ def test_empty_input_exits_2(monkeypatch):
     assert exc.value.code == 2
 
 
-def test_target_version_constant_removed():
-    assert not hasattr(run, "TARGET_VERSION")
+def test_eof_on_prompt_exits_2(monkeypatch):
+    def _eof(prompt=""):
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", _eof)
+    with pytest.raises(SystemExit) as exc:
+        run._resolve_version(run._get_args([]))
+    assert exc.value.code == 2

@@ -1,9 +1,22 @@
 """Tests that ProdCopier ships only git-tracked files when tracked_only is set."""
+import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from conversion.project_model import FolderSpec, ProdConfig, ProjectPaths
 from conversion.prod_deploy import ProdCopier
+
+pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
+
+
+@pytest.fixture(autouse=True)
+def _isolate_git(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep git discovery inside tmp_path, independent of any enclosing repo or env overrides."""
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path))
+    monkeypatch.delenv("GIT_DIR", raising=False)
+    monkeypatch.delenv("GIT_WORK_TREE", raising=False)
 
 
 def _git(root: Path, *args: str) -> None:

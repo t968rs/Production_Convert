@@ -4,42 +4,33 @@ from pathlib import Path
 from functools import lru_cache
 from typing import List, Optional
 
-_GIT_FOLDER_CONTENTS = {"config", "HEAD", "index"}
 _REPO_SCRIPTS_FOLDER_NAME = "conversion"
 
-def _is_git_folder(folder) -> bool:
-    if not folder.exists():
-        return False
-    content_names = set(f.name for f in folder.iterdir())
-    return content_names.issuperset(_GIT_FOLDER_CONTENTS)
-
-def _search_down_for(folder: Path, name_under: str) -> bool:
-    return any(f.name == name_under for f in folder.iterdir())
 
 @lru_cache(maxsize=1)
 def _get_repo_root() -> Path:
-    start_path = Path(__file__) or Path().cwd()
+    """
+    Return the nearest ancestor of this file that holds a `.git` entry.
 
-    all_parents = [start_path] + list(start_path.parents) if start_path.is_dir() else list(start_path.parents)
-    for parent in all_parents:
-        print(f'Parent: {parent.name}')
-        if _search_down_for(parent, ".git"):
-            git_folder = parent / ".git"
-            if _is_git_folder(git_folder):
-                return parent
+    The entry is a directory in a plain clone and a `gitdir:` file in a linked
+    worktree or submodule; both count.
+    """
+    start_path = Path(__file__).resolve()
+    for parent in start_path.parents:
+        if (parent / ".git").exists():
+            return parent
+    raise FileNotFoundError(f"Could not find repo root above {start_path}")
 
-    raise FileNotFoundError(f'Could not find repo path. Last searched: {parent}')
 
-def _bootstrap_sys_path(scripts_folder: str = _REPO_SCRIPTS_FOLDER_NAME):
-    import sys
+def _bootstrap_sys_path(scripts_folder: str = _REPO_SCRIPTS_FOLDER_NAME) -> None:
+    """Put the repo root on sys.path once, so `conversion.*` imports resolve."""
     repo_root = _get_repo_root()
-    scripts_folder = repo_root / scripts_folder
-
-    if not scripts_folder.exists():
-        raise FileExistsError(str(scripts_folder))
-    sys.path.insert(0, str(scripts_folder))
-    sys.path.insert(0, str(scripts_folder.parent))
-
+    scripts_dir = repo_root / scripts_folder
+    if not scripts_dir.is_dir():
+        raise FileNotFoundError(str(scripts_dir))
+    root = str(repo_root)
+    if root not in sys.path:
+        sys.path.insert(0, root)
 
 
 def _get_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -56,7 +47,10 @@ def _get_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(
         prog="run.py",
-        description="Copy the fpm production files into prod_results/FPM_<version>.",
+        description=(
+            "Copy the fpm production files into "
+            "<DEST_ROOT>/FPM_<version with dots as underscores>, e.g. FPM_3_17_2."
+        ),
     )
     parser.add_argument(
         "version",
@@ -77,7 +71,8 @@ def _resolve_version(args: argparse.Namespace) -> str:
     Return the target version from the parsed args, else from an input() prompt.
 
     Exits with status 2 when the positional and flag values disagree, or when the
-    prompt is answered with an empty line.
+    prompt is answered with an empty line or hits EOF (closed or non-interactive
+    stdin).
     """
     given = {v.strip() for v in (args.version, args.version_flag) if v and v.strip()}
     if len(given) > 1:
@@ -85,7 +80,10 @@ def _resolve_version(args: argparse.Namespace) -> str:
         raise SystemExit(2)
     if given:
         return given.pop()
-    answer = input("Please enter the target version (e.g. v3.17.2): ").strip()
+    try:
+        answer = input("Please enter the target version (e.g. v3.17.2): ").strip()
+    except EOFError:
+        answer = ""
     if not answer:
         print("No target version given.", file=sys.stderr)
         raise SystemExit(2)
@@ -101,15 +99,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     cfg, paths = load_project("fpm", target_version)
     print(str(cfg))
 
-    # Preview
     result = ProdCopier(cfg, paths, dry_run=False).run()
 
     print(f"{len(result.copied)} files copied.")
 
     if not result.ok:
         for err in result.errors:
-            print(f"\tERROR: {err}")
-        print("Failed.")
+            print(f"\tERROR: {err}", file=sys.stderr)
+        print("Failed.", file=sys.stderr)
         return 1
 
     for sk in result.skipped:

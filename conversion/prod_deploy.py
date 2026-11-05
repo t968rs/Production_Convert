@@ -2,13 +2,17 @@
 prod_deploy.py - Production deployment config and file copier for fpm projects.
 
 Project definition layout:
-    project_definition/
+    project_definitions/ (sibling of conversion/)
         <project>.json   -- folder specs and file filter patterns
         <project>.env    -- SOURCE_ROOT and DEST_ROOT paths
 
 Usage:
-    cfg, paths = load_project("fbs")
+    cfg, paths = load_project("fpm", "v3.17.2")
     result = ProdCopier(cfg, paths, dry_run=True).run()
+
+tracked_only (default True) requires git on PATH and a repository SOURCE_ROOT.
+Tracked files with uncommitted changes are listed in a stderr warning and
+copied anyway (working-tree contents, not the committed release).
 """
 
 from __future__ import annotations
@@ -17,6 +21,7 @@ import fnmatch
 import re
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import FrozenSet, List, Optional, Tuple
@@ -78,10 +83,13 @@ def load_project(
     """
     Load config and paths for a named project.
 
-    Resolves both files from project_def_dir (default: project_definition/
-    next to this file):
+    Resolves both files from project_def_dir (default: project_definitions/,
+    sibling of conversion/):
         <name>.json
         <name>.env
+
+    With tracked_only (default True), the copy requires git on PATH and a
+    repository SOURCE_ROOT.
     """
     base = project_def_dir or _PROJECT_DEF_DIR
     cfg = ProdConfig.from_json(base / f"{name}.json")
@@ -166,6 +174,53 @@ def _tracked_paths(source_root: Path) -> FrozenSet[str]:
         detail = proc.stderr.decode("utf-8", "replace").strip()
         raise RuntimeError(f"git ls-files failed in {source_root}: {detail}")
     return frozenset(p for p in proc.stdout.decode("utf-8").split("\0") if p)
+
+
+def _dirty_tracked_paths(source_root: Path) -> List[str]:
+    """
+    Return tracked paths under source_root with staged or unstaged changes.
+
+    Paths are relative to the repository root, as ``git status --porcelain``
+    reports them. Raises RuntimeError when git fails.
+    """
+    proc = subprocess.run(
+        [
+            "git", "-C", str(source_root), "status",
+            "--porcelain", "-z", "--untracked-files=no", "--", ".",
+        ],
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        detail = proc.stderr.decode("utf-8", "replace").strip()
+        raise RuntimeError(f"git status failed in {source_root}: {detail}")
+    return _parse_porcelain_z(proc.stdout.decode("utf-8"))
+
+
+def _parse_porcelain_z(output: str) -> List[str]:
+    """Extract paths from ``status --porcelain -z`` output, dropping rename sources."""
+    fields = output.split("\0")
+    paths: List[str] = []
+    i = 0
+    while i < len(fields):
+        entry = fields[i]
+        i += 1
+        if len(entry) < 4:
+            continue
+        paths.append(entry[3:])
+        if "R" in entry[:2] or "C" in entry[:2]:
+            i += 1  # the next field is the rename or copy source path
+    return paths
+
+
+def _warn_dirty(source_root: Path, dirty: List[str]) -> None:
+    """Print the tracked files whose working-tree contents differ from HEAD."""
+    print(
+        f"WARNING: {len(dirty)} tracked file(s) in {source_root} have "
+        "uncommitted changes; copying working-tree contents:",
+        file=sys.stderr,
+    )
+    for rel in dirty:
+        print(f"\t{rel}", file=sys.stderr)
 
 
 def _scope_tracked(
@@ -263,10 +318,9 @@ class ProdCopier:
             return CopyResult((), (), (), tuple(errors))
 
         if self._cfg.tracked_only:
-            try:
-                self._tracked = _tracked_paths(self._paths.source_root)
-            except (OSError, RuntimeError) as exc:
-                return CopyResult((), (), (), (str(exc),))
+            git_error = self._load_tracked()
+            if git_error:
+                return CopyResult((), (), (), (git_error,))
 
         if self._clean_dest and not self._dry_run:
             if self._paths.dest_root.exists():
@@ -296,6 +350,17 @@ class ProdCopier:
             tuple(copied), tuple(skipped), tuple(patched), tuple(errors_acc)
         )
 
+    def _load_tracked(self) -> Optional[str]:
+        """Load the tracked set and warn on uncommitted edits; return a git error, if any."""
+        try:
+            self._tracked = _tracked_paths(self._paths.source_root)
+            dirty = _dirty_tracked_paths(self._paths.source_root)
+        except (OSError, RuntimeError) as exc:
+            return str(exc)
+        if dirty:
+            _warn_dirty(self._paths.source_root, dirty)
+        return None
+
     def _copy_folder(
         self, spec: FolderSpec
     ) -> Tuple[List[Path], List[Path], List[str]]:
@@ -316,7 +381,6 @@ class ProdCopier:
             ok, err = self._copy_file(src_file, dst)
             if err:
                 errors.append(err)
-                print(f'ERROR: {err}')
             elif ok:
                 copied.append(dst)
             else:
