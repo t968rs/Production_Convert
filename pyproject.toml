@@ -1,0 +1,18 @@
+[project]
+name = "production-convert"
+version = "0.1.0"
+description = "Copies a project's tracked files into a production deployment layout."
+requires-python = ">=3.11"
+dependencies = [
+    "jsonschema",
+    "pydantic>=2",
+    "referencing",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+]
+
+[tool.uv]
+package = false

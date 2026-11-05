@@ -38,6 +38,7 @@ desktop.ini
 # ENV
 .env
 *.lock
+!uv.lock
 /FPM.txt
 _in_progress/**
 prod_results/
