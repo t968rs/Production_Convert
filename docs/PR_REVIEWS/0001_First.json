@@ -1,0 +1,317 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 1,
+  "pr_title": "First",
+  "branch": "0005-modify-fpm-def",
+  "base_branch": "main",
+  "base_sha": "23c5b90c42c44c4189fda40bab03f4e691b2aca6",
+  "head_sha": "8488eaee5b6040d81228f5bdcc07ca02b086747b",
+  "review_date": "2026-11-05",
+  "verdict": "NOT READY TO MERGE - important: I1, I2, I3",
+  "stats": {
+    "additions": 365,
+    "deletions": 51,
+    "files_changed": 9
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0001/pr1_20261105T192009Z/findings/tests.json",
+    "docs/_scratch/pr_review/0001/pr1_20261105T192009Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0001/pr1_20261105T192009Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "test_prod_deploy_tracked.py is a real integration test: it builds a git repo with staged and untracked files and runs the unstubbed ProdCopier, covering folder files, top-level files, skipped reporting and the tracked_only=False path.",
+    "test_run_args.py parametrizes every documented version form from the _get_args docstring, plus duplicate, conflicting, unknown-flag and empty-prompt cases with their exit codes.",
+    "test_run_exit_code.py drives run.py through runpy as __main__, so the `raise SystemExit(main())` exit-code mapping is exercised end to end; its fakes replace collaborators only and the assertions check exit code and output, not stub calls.",
+    "_tracked_paths uses `git ls-files -z` with -C, so paths are unquoted, relative to source_root, and correct when source_root is a subdirectory of the repo; the docstring states the index semantics exactly.",
+    "The git lookup fails closed: a missing git binary (OSError) or a non-repo source (RuntimeError) becomes a CopyResult error before clean_dest can rmtree anything.",
+    "_scope_tracked re-roots the tracked set per folder and passes None through, so the tracked_only=False path stays byte-identical to the old walk.",
+    "Untracked files are reported in skipped instead of being dropped silently, and top-level files go through the same tracked filter.",
+    "run.py now returns explicit exit codes (0/1/2) through main() and SystemExit instead of relying on assert, which the -O flag would have stripped.",
+    "Argument parsing is split into _get_args and _resolve_version with docstrings that match argparse behavior, including the conflict and empty-prompt exits.",
+    "The git query runs before the clean_dest rmtree, so a missing git or a non-repository source fails without deleting the existing destination.",
+    "`git ls-files -z` with split on NUL avoids core.quotePath escaping, so non-ASCII and space-containing paths match the filesystem walk.",
+    "test_prod_deploy_tracked.py is a real integration test: it builds a git repo in tmp_path, stages a subset of files, and asserts on what lands on disk. No mocks.",
+    "Replacing `assert result.ok` with an explicit return code plus `raise SystemExit(main())` means failures survive `python -O` and surface to callers as exit 1.",
+    "_resolve_version normalizes whitespace before detecting conflicts, so `v3.17.2 -v ' v3.17.2'` is accepted while two genuinely different versions exit 2.",
+    "fpm.json fixes the scripts denied pattern from `scripts/fpm/_tbx_staging/**`, which never matched because patterns are folder-relative, to `fpm/_tbx_staging/**`."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "New tests do not import under plain `pytest`",
+        "file": "Pipfile",
+        "files": [
+          "Pipfile",
+          "tests/test_prod_deploy_tracked.py",
+          "tests/test_run_args.py",
+          "tests/test_run_exit_code.py"
+        ],
+        "lines": "7-8,11",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "All three new test files import `conversion.*`, but the repo has no conftest.py, pytest.ini, or pyproject pythonpath setting, and tests/ has no __init__.py. In the default prepend import mode pytest puts tests/ on sys.path, not the repo root, so a bare `pytest` fails with ModuleNotFoundError: conversion. Only `python -m pytest` from the repo root works, because that adds the cwd. pytest is also missing from [dev-packages], so a fresh `pipenv install --dev` cannot run the suite at all.\n\nAlso (roast): The Pipfile adds `referencing` and `jsonschema` as runtime packages. Nothing in the repo imports either one: validation goes through pydantic's ProdConfig. Two unused dependencies to install and lock.",
+        "fix": [
+          "Add an empty repo-root conftest.py (rootdir conftest puts the root on sys.path), or a pytest.ini / pyproject [tool.pytest.ini_options] with `pythonpath = .`; and add `pytest = \"*\"` under [dev-packages] in Pipfile.",
+          "Remove both lines from [packages].",
+          "If JSON-schema validation of project definitions is planned, land the code that uses them in the same change."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Repo-root discovery crashes in a git worktree or submodule",
+        "file": "conversion/run.py",
+        "files": [
+          "conversion/run.py",
+          "tests/test_run_exit_code.py"
+        ],
+        "lines": "7-31,33-41,104",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_get_repo_root matches any ancestor holding an entry named .git, then calls _is_git_folder on it. In a linked worktree or a submodule, .git is a file (gitdir: ...), so folder.exists() is True and folder.iterdir() raises NotADirectoryError. main() calls _bootstrap_sys_path unconditionally, so run.py dies with a traceback before any copy whenever it runs from a worktree, which is the normal workflow for this project. A freshly initialised repo with no .git/index also fails the superset check and walks on to a wrong or missing root. The search is not needed anyway: run.py always sits one level below the repo root.\n\nAlso (roast): _get_repo_root (run.py:20-31) finds '.git' via _search_down_for, then calls _is_git_folder, which runs folder.iterdir() on it. In a linked worktree '.git' is a file ('gitdir: ...'), so iterdir raises NotADirectoryError (WinError 267) and run.py dies before it parses anything useful. This project's workflow creates worktrees as standard practice, and tests/test_run_exit_code.py goes through the same path via runpy, so those tests fail when the suite runs from a worktree. It is a lot of repo detection for a file whose parent directory is already known: prod_deploy.py:26-27 finds its root with Path(__file__).parent.\n\nAlso (runtime): print(f'Parent: {parent.name}') runs for every ancestor on every invocation, so each run starts with noise lines ('Parent: conversion', 'Parent: Production_Convert') ahead of the real output. This is debug output left in the code.\n\nAlso (roast): run.py:25 prints 'Parent: <name>' for every directory it walks, on every run and in every test that goes through main(). That is debug output left in. Path(__file__) at line 21 is always truthy, so the `or Path().cwd()` fallback can never run. Line 39 raises FileExistsError for a folder that does not exist. Line 34 re-imports sys inside the function. Line 40 puts conversion/ itself on sys.path, so its modules can also be imported as top-level `prod_deploy`/`project_model`, a second identity nobody asked for. The `# Preview` comment at line 104 sits above a dry_run=False call. Each main() call in the tests also prepends two more sys.path entries.",
+        "fix": [
+          "Replace the ancestor search with a fixed anchor: repo_root = Path(__file__).resolve().parents[1], and drop _get_repo_root, _search_down_for, _is_git_folder and _GIT_FOLDER_CONTENTS.",
+          "Keep the search but accept .git as either a directory or a file: return parent as soon as (parent / '.git').exists(), and remove the iterdir-based content check.",
+          "Replace _get_repo_root, _is_git_folder and _search_down_for with `Path(__file__).resolve().parents[1]`, which is the layout prod_deploy.py already assumes.",
+          "Keep the search but accept a '.git' file as well as a directory: return the first parent where `(parent / '.git').exists()`, and never iterdir a non-directory.",
+          "Delete the print call at conversion/run.py:25.",
+          "Delete the print at line 25 and the `or Path().cwd()` fallback, raise FileNotFoundError at line 39, drop the inner `import sys`, insert only the repo root into sys.path (once, if it is not already there), and remove or correct the `# Preview` comment."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Suite imports `conversion` with no rootdir/pythonpath configuration",
+        "file": "tests/test_run_args.py",
+        "files": [
+          "tests/test_run_args.py",
+          "tests/test_prod_deploy_tracked.py",
+          "tests/test_run_exit_code.py"
+        ],
+        "lines": "4",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "All three test modules import the `conversion` package by absolute name (`from conversion import run`, `from conversion.project_model import ...`, `import conversion.prod_deploy`). The repo has no conftest.py, pyproject.toml, pytest.ini or setup.cfg, and tests/ has no __init__.py, so pytest's default prepend import mode puts only tests/ on sys.path. A plain `pytest` invocation (the console script, where sys.path[0] is the Scripts dir, not the cwd) fails collection with ModuleNotFoundError: conversion; only `python -m pytest` from the repo root works, because it adds the cwd. The suite's pass/fail therefore depends on how it is launched.",
+        "fix": [
+          "Add a repo-root pyproject.toml (or pytest.ini) with `[tool.pytest.ini_options] pythonpath = [\".\"]` and `testpaths = [\"tests\"]`.",
+          "Add an empty repo-root conftest.py so pytest's rootdir insertion puts the repo root on sys.path."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Stale module docstring in prod_deploy.py",
+        "file": "conversion/prod_deploy.py",
+        "lines": "5,10,81-82",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring names the directory `project_definition/` (lines 5, 81) and says it is 'next to this file'. The code uses `project_definitions`, one level up (_PROJECT_DEF_DIR = _HERE_DIR.parent / 'project_definitions'). The usage example `load_project(\"fbs\")` (line 10) omits target_version, which is required, so it raises TypeError. Neither docstring mentions that the copy now requires git and a repository SOURCE_ROOT by default.",
+        "fix": [
+          "Change lines 5 and 81-82 to `project_definitions/ (sibling of conversion/)`, change the usage example to `load_project(\"fpm\", \"v3.17.2\")`, and add one line noting that tracked_only (default True) requires git on PATH."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "tracked_only ships uncommitted edits under a release version label",
+        "file": "conversion/prod_deploy.py",
+        "files": [
+          "conversion/prod_deploy.py",
+          "conversion/project_model.py"
+        ],
+        "lines": "154-168,265-269",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "_tracked_paths filters on which paths are tracked, but _copy_file copies the working-tree bytes. A tracked file with uncommitted local edits (or a staged-only new file) goes into FPM_<version> as if it were the release. The version argument suggests a tagged build; the code does not check that the source tree is at that tag or clean. The filter answers 'is it tracked', not 'is this the committed release'.",
+        "fix": [
+          "Before copying, run `git -C <source_root> status --porcelain -- <folders>`; return an error (or at least a warning in CopyResult) when the tree is dirty.",
+          "Export from the commit instead of the working tree (`git archive <target_version>` or `git show <rev>:<path>`), so the version label means the tag."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Copy errors printed twice, to stdout",
+        "file": "conversion/prod_deploy.py",
+        "files": [
+          "conversion/prod_deploy.py",
+          "conversion/run.py",
+          "tests/test_run_exit_code.py"
+        ],
+        "lines": "319",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "_copy_folder already prints `ERROR: {err}` for each copy failure (prod_deploy.py:319). run.py:109-111 now prints every error again as `\\tERROR: ...`, so each folder copy failure shows up twice. Version errors go to stderr (run.py:84,90) but copy failures go to stdout, so a caller that captures stderr misses the actual cause of exit code 1.",
+        "fix": [
+          "Delete the print at prod_deploy.py:319 so the library reports through CopyResult only, and send run.py's ERROR lines and 'Failed.' to sys.stderr. The assertion in test_failed_copy_exits_1 then reads capsys err instead of out."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Commit messages omit the default-on git tracking filter",
+        "file": "conversion/project_model.py",
+        "files": [
+          "conversion/project_model.py",
+          "conversion/prod_deploy.py"
+        ],
+        "lines": "58",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "ProdConfig.tracked_only defaults to True, so every project definition (fpm.json and prod_deploy.json) now needs git on PATH and a repository SOURCE_ROOT, and untracked files are silently moved to skipped. None of the commit messages in the range mention this; 25be106 calls it 'deployment code modularization'.",
+        "fix": [
+          "Add a line to the PR description: copies are now limited to git-tracked files by default (tracked_only), and a non-repository source is an error."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Dead fallback and an unbound name in _get_repo_root",
+        "file": "conversion/run.py",
+        "lines": "21,31,33-41",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "Path(__file__) or Path().cwd() never reaches cwd() because Path objects are always truthy. Path(__file__) is also not resolved, so a relative or symlinked __file__ yields a relative parent chain. If all_parents is empty, the final raise references parent before assignment and raises NameError instead of FileNotFoundError.\n\nAlso (runtime): A missing scripts folder raises FileExistsError, which means the opposite. The function also inserts conversion/ itself at the front of sys.path, so every module in it can be imported a second time as a top-level module (project_model vs conversion.project_model), and each main() call adds duplicate entries. The str annotation on scripts_folder is reassigned to a Path, and the local `import sys` repeats the module-level import.",
+        "fix": [
+          "Use start_path = Path(__file__).resolve() and drop the `or Path().cwd()` branch; build the error message from start_path instead of the loop variable.",
+          "Moot if the anchor fix for the worktree finding replaces the function.",
+          "Raise FileNotFoundError(str(scripts_folder)), insert only the repo root (skip when already present), drop the inner `import sys`, and rename the Path variable (e.g. scripts_dir)."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "CLI help names the wrong destination folder",
+        "file": "conversion/run.py",
+        "files": [
+          "conversion/run.py",
+          "conversion/prod_deploy.py"
+        ],
+        "lines": "57-60",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The parser description says files go to prod_results/FPM_<version>. The destination is DEST_ROOT from fpm.env, and the folder name comes from _generate_project_version_folder_name, which strips 'v' and turns dots into underscores: v3.17.2 lands in FPM_3_17_2, not FPM_v3.17.2.",
+        "fix": [
+          "Change the description to 'Copy the fpm production files into <DEST_ROOT>/FPM_<version with dots as underscores>, e.g. FPM_3_17_2.'"
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Version prompt crashes on EOF instead of exiting 2",
+        "file": "conversion/run.py",
+        "lines": "75-92",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The _resolve_version docstring says an empty answer exits with status 2. When stdin is closed or not interactive (scheduled task, piped run), input() raises EOFError and the run ends in a traceback with status 1, not the documented usage exit.",
+        "fix": [
+          "Wrap the input() call in try/except EOFError, treat it as an empty answer (print 'No target version given.' to stderr and raise SystemExit(2)), and mention EOF in the docstring."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "'# Preview' comment above a real copy; errors print twice to stdout",
+        "file": "conversion/run.py",
+        "files": [
+          "conversion/run.py",
+          "conversion/prod_deploy.py",
+          "tests/test_run_exit_code.py"
+        ],
+        "lines": "104-113",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "main() labels ProdCopier(..., dry_run=False).run() as '# Preview', but it is a real write. Copy errors are now printed twice: once by ProdCopier._copy_folder (prod_deploy.py:319) and again by main's ERROR loop. Both go to stdout, while _resolve_version reports its failures on stderr.",
+        "fix": [
+          "Delete or reword the '# Preview' comment, send main's ERROR lines and 'Failed.' to sys.stderr, and drop the print in _copy_folder so main is the only reporter (tests/test_run_exit_code.py reads capsys out, so update that assertion to err)."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "reference/ no longer denies reference_modules and toolbox_figures",
+        "file": "project_definitions/fpm.json",
+        "lines": "22-23",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "fpm.json drops `reference_modules/**` and `toolbox_figures/**` from the reference folder's denied list, and that folder has `allowed: []` (allow everything). Any tracked file under those two directories now ships to prod. The scripts folder's dropped patterns (_pre_tbx, _admin_utils, pyt_scripts) are harmless because `allowed: [\"fpm/**\"]` already excludes them. The reference ones are not covered by anything.",
+        "fix": [
+          "Re-add `reference_modules/**` and `toolbox_figures/**` to reference.denied if they should stay out of prod.",
+          "If shipping them is intended, say so in the PR description."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Non-git error test depends on tmp_path sitting outside any git repo and on git being installed",
+        "file": "tests/test_prod_deploy_tracked.py",
+        "lines": "9-10,13-39,67-72",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_non_git_source_is_an_error assumes `git -C <tmp_path>/plain ls-files` fails. If the pytest basetemp lies inside a repository (custom --basetemp under the project, a home/Temp tree under version control) or GIT_DIR/GIT_WORK_TREE are set in the environment (e.g. running from a git hook), ls-files succeeds, the run proceeds and the only error is `debug_override_rel not found in dest`, so the `git ls-files` assertion fails. If git is absent, the OSError text (`[WinError 2] ...`) does not contain `git ls-files` either, and every test in the module errors in `_git` instead of skipping.\n\nAlso (tests): _tracked_paths relies on `git -C <source_root> ls-files` printing paths relative to source_root, and _copy_top_level compares bare file names against that set. The fixture always makes source_root the repo root, so a regression to repo-root-relative paths (e.g. adding `--full-name` or running from the toplevel) would pass every test while shipping nothing when SOURCE_ROOT is nested.",
+        "fix": [
+          "Add an autouse fixture that sets `GIT_CEILING_DIRECTORIES` to str(tmp_path) and deletes `GIT_DIR`/`GIT_WORK_TREE` via monkeypatch, and mark the module with `pytest.mark.skipif(shutil.which(\"git\") is None, reason=\"git not installed\")`.",
+          "Add a test that runs `git init` in tmp_path, builds the source tree under tmp_path/\"src\", stages the files from the repo root, and asserts the same shipped/skipped sets with ProjectPaths(tmp_path/\"src\", dst)."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Constant-absence test is a change detector; the version-to-load_project flow is untested",
+        "file": "tests/test_run_args.py",
+        "files": [
+          "tests/test_run_args.py",
+          "tests/test_run_exit_code.py"
+        ],
+        "lines": "52-53",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_target_version_constant_removed asserts only that `run.TARGET_VERSION` no longer exists, which pins a removed implementation detail and would still pass if main() ignored the resolved version. No test checks that the parsed or prompted version actually reaches load_project: the fake in test_run_exit_code.py discards its `version` argument.",
+        "fix": [
+          "Replace the hasattr test with a behavioral one: in test_run_exit_code.py let the fake load_project capture its arguments, run with `sys.argv = [RUN_PY, \"v1.2.3\"]`, and assert the captured version is \"v1.2.3\" (and that input() is not called)."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Fake copier result is class state mutated without teardown",
+        "file": "tests/test_run_exit_code.py",
+        "lines": "13-14,33,41",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "Both tests assign `fake_copy.result = ...`, which writes the class attribute of the module-level _FakeCopier and survives the test. test_successful_copy_exits_0 only passes in isolation because it resets the value itself; any future test that uses the fixture without setting `result` inherits whatever the previous test left (e.g. the failing result), making outcomes order-dependent.",
+        "fix": [
+          "In the fixture, build a fresh subclass per test (`copier = type(\"Copier\", (_FakeCopier,), {\"result\": CopyResult((), (), (), ())})`) and patch ProdCopier with it.",
+          "Or set the attribute through `monkeypatch.setattr(_FakeCopier, \"result\", ...)` so it is restored at teardown."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "runpy of run.py leaks sys.path edits into the rest of the session",
+        "file": "tests/test_run_exit_code.py",
+        "lines": "23-29",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "Each runpy.run_path call executes main(), which calls _bootstrap_sys_path() and inserts both the repo root and the conversion/ folder at sys.path[0] with no cleanup. After these tests, bare module names under conversion/ (e.g. `project_model`, `prod_deploy`, `run`) shadow anything of the same name for every later test, and the entries accumulate once per call. The fixture restores argv, input, load_project and ProdCopier but not sys.path.",
+        "fix": [
+          "In the fake_copy fixture add `monkeypatch.setattr(sys, \"path\", list(sys.path))` so the inserted entries are discarded at teardown."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 1 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":4,\"first_sha\":\"6790768af46789dc5ef0401896fda84e4caf41b3\",\"headRefName\":\"0005-modify-fpm-def\",\"headRefOid\":\"8488eaee5b6040d81228f5bdcc07ca02b086747b\",\"last_sha\":\"8488eaee5b6040d81228f5bdcc07ca02b086747b\",\"mergeCommit\":null,\"number\":1,\"state\":\"OPEN\",\"title\":\"First\",\"url\":\"https://github.com/t968rs/Production_Convert/pull/1\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": "pending - to be populated in Phase 4"
+  }
+}

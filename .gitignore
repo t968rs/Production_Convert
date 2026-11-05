@@ -1,9 +1,40 @@
 
+# Python bytecode and caches
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.hypothesis/
+
+# Build and packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
 # IntelliJ project files
 .idea
 *.iml
 out
 gen
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
 # ENV
 .env
 *.lock
@@ -11,3 +42,6 @@ gen
 _in_progress/**
 prod_results/
 *settings.local.json
+
+# Temp / Untracked
+*/_scratch/

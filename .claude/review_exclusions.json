@@ -1,0 +1,41 @@
+{
+  "_comment": "Machine-generated paths the pr-review clean-tree check and review capture skip (fnmatch patterns over repo-relative POSIX paths). Seeded by the harness plugin; edit freely.",
+  "exclusions": [
+    {
+      "pattern": "docs/PR_REVIEWS/*",
+      "reason": "pr-review output"
+    },
+    {
+      "pattern": "docs/PR_SUMMARIES/*",
+      "reason": "PR summaries"
+    },
+    {
+      "pattern": "docs/_scratch/pr_review/*",
+      "reason": "pr-review run scratch"
+    },
+    {
+      "pattern": "docs/_commit_messages/*",
+      "reason": "commit message drafts"
+    },
+    {
+      "pattern": ".claude/state/harness/*",
+      "reason": "harness runtime state"
+    },
+    {
+      "pattern": "docs/_harness/pr_review_invocation_test_matrix.jsonl",
+      "reason": "agent-watcher invocation matrix rows"
+    },
+    {
+      "pattern": "docs/_harness/agent_usage.jsonl",
+      "reason": "agent usage rows"
+    },
+    {
+      "pattern": "*_Bubbles.md",
+      "reason": "bubble memos (point-in-time snapshots)"
+    },
+    {
+      "pattern": ".claude/review_exclusions.json",
+      "reason": "this file, seeded by the harness"
+    }
+  ]
+}
