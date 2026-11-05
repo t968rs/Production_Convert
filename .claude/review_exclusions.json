@@ -36,6 +36,10 @@
     {
       "pattern": ".claude/review_exclusions.json",
       "reason": "this file, seeded by the harness"
+    },
+    {
+      "pattern": ".gitignore",
+      "reason": "repo housekeeping; developer-owned ignore rules"
     }
   ]
 }

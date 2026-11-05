@@ -1,0 +1,148 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 2,
+  "pr_title": "0002 python env",
+  "branch": "0002-python-env",
+  "base_branch": "main",
+  "base_sha": "a3399bc2bd5ab7f7a874b793b784f774a910088e",
+  "head_sha": "5f813a61f7556a5885a639b0311f35d6bdddf6fe",
+  "review_date": "2026-11-05",
+  "verdict": "READY TO MERGE - 2 of 2 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 519,
+    "deletions": 15,
+    "files_changed": 5
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0002/pr2_20261105T212246Z/findings/config.json",
+    "docs/_scratch/pr_review/0002/pr2_20261105T212246Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Comments in [tool.ruff] and [tool.ruff.lint] match the settings: select equals the ruff defaults (E4, E7, E9, F) plus UP, and the four ignored UP rules match the stated typing-module spelling convention.",
+    "requires-python >=3.11 agrees with ruff target-version py311, and the 3.14 runtime pin lives in .python-version as the comment says.",
+    "[tool.uv] package = false fits a script-style repo that imports conversion.* from the repo root, and uv.lock is tracked for reproducible installs.",
+    "Dev tools (pytest, ruff) sit in a [dependency-groups] dev group, not in runtime dependencies.",
+    "Native dependencies (pydantic-core, rpds-py) lock wheels for cp311 through cp314, so both the requires-python >=3.11 floor and the 3.14 pin in .python-version install without a source build.",
+    "Pipfile runtime dependencies carry over exactly, pydantic>=2 floor included, and the lock's package.metadata matches pyproject.toml, so the lock is not stale at head.",
+    "The `!uv.lock` negation sits after `*.lock` in .gitignore, so it actually re-includes the lock file instead of losing to rule order.",
+    "The ruff ignore list names each UP rule and why it is off, which keeps pyupgrade from rewriting Union/Optional and typing-module hints against the 3.11 house style.",
+    "`[tool.uv] package = false` skips a build backend the script repo does not need, and the tests/__init__.py rootdir import path still holds with the new pyproject.toml at the root."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "jsonschema and referencing declared but never imported",
+        "file": "pyproject.toml",
+        "files": [
+          "pyproject.toml",
+          "uv.lock",
+          "conversion/project_model.py"
+        ],
+        "lines": "6-10",
+        "reviewer": "config",
+        "fix_kind": "judgment",
+        "summary": "pyproject.toml:6-10 lists jsonschema and referencing as runtime dependencies, but no tracked Python file (conversion/, tests/, dev2prod_DEP.py) imports either; the only third-party import is pydantic in conversion/project_model.py:6. The deps were carried over from the Pipfile, so a fresh uv sync installs two packages (and their transitive deps) the code does not use.",
+        "fix": [
+          "Drop jsonschema and referencing from [project].dependencies and re-run uv lock, if nothing outside the tracked tree needs them",
+          "Keep them and note in the PR summary which planned code (for example schema validation of project_definitions/*.json) will use them"
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Lock pins packages published the same day it was generated",
+        "file": "pyproject.toml",
+        "files": [
+          "pyproject.toml",
+          "uv.lock"
+        ],
+        "lines": "18-19",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "uv.lock resolves pydantic 2.14.3 and pydantic-core 2.50.4 (uploaded 2026-11-05T09:15-09:17Z) and ruff 0.17.4 (uploaded 2026-11-05T18:52Z), all hours old when locked, and pyproject.toml sets no `exclude-newer` cooldown under [tool.uv]. A release that turns out broken or compromised gets frozen in by the first lock, and every future `uv lock --upgrade` keeps grabbing whatever shipped that morning. Bleeding edge, now with hashes.",
+        "fix": [
+          "Add `exclude-newer = \"7 days\"` (relative duration, on uv versions that accept it) under [tool.uv] in pyproject.toml, then rerun `uv lock` so the pinned versions fall back to releases at least a week old.",
+          "Add an absolute RFC 3339 cutoff such as `exclude-newer = \"2026-10-29T00:00:00Z\"` under [tool.uv], rerun `uv lock`, and move the date forward deliberately on each upgrade."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M2",
+      "classification": "architectural_ambiguity",
+      "reason": "Supply-chain cooldown policy (none, relative 7 days, or absolute cutoff) is a developer convention call with no repo precedent, and the fix needs a uv lock the developer runs."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 2 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":5,\"first_sha\":\"e23a68a018ddea281e910fe46bceeef2e4dac78b\",\"headRefName\":\"0002-python-env\",\"headRefOid\":\"5f813a61f7556a5885a639b0311f35d6bdddf6fe\",\"last_sha\":\"5f813a61f7556a5885a639b0311f35d6bdddf6fe\",\"mergeCommit\":null,\"number\":2,\"state\":\"OPEN\",\"title\":\"0002 python env\",\"url\":\"https://github.com/t968rs/Production_Convert/pull/2\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0002-python-env",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0002-python-env",
+        "head_ref_name": "0002-python-env",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "AM docs/PR_SUMMARIES/0002_pr.json\n?? docs/PR_SUMMARIES/0002_Build_pyproject_toml_uv_environment.md",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "e23a68a018ddea281e910fe46bceeef2e4dac78b",
+        "head_sha": "5f813a61f7556a5885a639b0311f35d6bdddf6fe",
+        "base_ancestor_command": "git merge-base --is-ancestor e23a68a018ddea281e910fe46bceeef2e4dac78b HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 5f813a61f7556a5885a639b0311f35d6bdddf6fe HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-05",
+      "evidence": "5f813a6 (working-tree snapshot; developer commits) - closed, no action: intended: HARNESS_PY points at the project .venv python, and the harness requires jsonschema, referencing and pydantic in that interpreter; dropping them breaks harness skills"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "5f813a6 (working-tree snapshot; developer commits) - pyproject.toml [tool.uv]: added exclude-newer = \"7 days\" (developer guidance option 1) with a comment; uv.lock not edited, the developer must run uv lock to re-resolve the pins (uv not run by fixer)"
+    }
+  ]
+}

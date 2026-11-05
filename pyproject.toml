@@ -1,0 +1,34 @@
+[project]
+name = "production-convert"
+version = "0.1.0"
+description = "Copies a project's tracked files into a production deployment layout."
+requires-python = ">=3.11"
+dependencies = [
+    "jsonschema",
+    "pydantic>=2",
+    "referencing",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[tool.uv]
+package = false
+# Resolve only releases at least seven days old; a fresh release waits out the cooldown.
+exclude-newer = "7 days"
+
+[tool.ruff]
+# Runtime is 3.14 (.python-version); code and hints stay 3.11-compatible.
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+# Ruff defaults plus pyupgrade.
+select = ["E4", "E7", "E9", "F", "UP"]
+# Type hints keep the typing-module spelling; pyupgrade never rewrites them.
+#   UP007/UP045: Union[X, Y] / Optional[X] stay (no X | Y).
+#   UP006/UP035: typing.List/Tuple/FrozenSet stay (no list[...] / tuple[...]).
+ignore = ["UP006", "UP007", "UP035", "UP045"]
