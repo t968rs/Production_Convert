@@ -47,3 +47,6 @@ prod_results/
 # Temp / Untracked
 */_scratch/
 results/
+docs/PR_SUMMARIES/**/*
+docs/_commit_messages/**/*
+/.claude/state/harness/pr-review/.phase5*

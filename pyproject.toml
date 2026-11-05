@@ -17,6 +17,8 @@ dev = [
 
 [tool.uv]
 package = false
+# Resolve only releases at least seven days old; a fresh release waits out the cooldown.
+exclude-newer = "7 days"
 
 [tool.ruff]
 # Runtime is 3.14 (.python-version); code and hints stay 3.11-compatible.
