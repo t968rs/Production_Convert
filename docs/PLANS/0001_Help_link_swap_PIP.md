@@ -4,9 +4,9 @@
 
 **Plan created:** 2026-11-09
 **Spec:** `E:/automation/toolboxes/floodplain_development/docs/superpowers/specs/2026-11-09-toolbox-help-links-design.md`
-**Branch:** none -> main
+**Branch:** 0003-help-link-swap -> 0002-python-env
 **Base commit:** `33fe6c3`
-**Frozen:** 2026-11-09 at `33fe6c3`
+**Frozen:** 2026-11-10 at `cc0c2d2`
 **Execution model:** serial
 
 ## Decisions
@@ -27,7 +27,7 @@
 | live archive members | 266 entries: 47 .content, 47 .rc, 47 .xml, 42 .link (relative script paths, no 'file:' text), 34 .py, 3 .png, 46 directory entries; files deflated (8), directories stored (0) | floodplain_mapping.atbx in E:/automation/toolboxes/floodplain_development (branch 0019-html-metadata), read-only zipfile probe 2026-11-09 | - |
 | live archive file: hrefs | 1 member: SmoothAndSimplifyPolygons.tool/tool.content.rc, JSON-escaped as <a href=\"file:///E:/automation/toolboxes/floodplain_development/tool_metadata/tool_help/smooth_simplify.html\">; no other member of any type contains 'file:' | floodplain_mapping.atbx in E:/automation/toolboxes/floodplain_development (branch 0019-html-metadata), read-only zipfile probe 2026-11-09 | - |
 | live archive byte-order marks | none: every .xml starts '<?x', every .rc and .content starts '{' then a newline | floodplain_mapping.atbx in E:/automation/toolboxes/floodplain_development (branch 0019-html-metadata), read-only zipfile probe 2026-11-09 | - |
-| href tail terminators | double quote, single quote, backslash, <, >, &, #, ? and whitespace; Path.as_uri() percent-encodes each of them (probe: 'E:/a b/c&d#e' -> file:///E:/a%20b/c%26d%23e) | spec Section 4 Module; live archive .rc (see LIVE_ATBX); probe 2026-11-09 | - |
+| href tail terminators | double quote, single quote, backslash, <, >, &, #, ? and whitespace; Path.as_uri() percent-encodes each of them (probe: 'E:/a b/c&d#e' -> file:///E:/a%20b/c%26d%23e) | spec Section 4 Module; live archive .rc (see the 'live archive file: hrefs' value); probe 2026-11-09 | - |
 | UNC link prefix | Path('//srv/share/fpm_releases/FPM_1_0_0').as_uri() == 'file://srv/share/fpm_releases/FPM_1_0_0' (probe 2026-11-09, Windows) | spec Section 1 | - |
 | fnmatch scope | 'tool_help/*.html' also matches .html files in any tool_help/ subfolder no deny pattern removes ('*' crosses '/'), and ignores case on Windows ('tool_help/Upper.HTML' shipped in the probe) | conversion/prod_deploy.py:134-137; probe 2026-11-09 | - |
 | red interpreter | HARNESS_PY C:/Users/t968rs/miniforge3/envs/arc_3_4_0/python.exe: Python 3.11.10, pydantic 2.4.2, pytest 7.4.3 (the repo .venv is 3.14.3 / 2.14.2 / 9.2.0) | hpy candidate order (HARNESS_PY first); probe 2026-11-09 | - |
@@ -37,7 +37,7 @@
 | patched rule | ok and swap_count > 0 -> the dest archive path joins patched (real run after the write, dry run as the would-be path) | D2 | patched-dest |
 | fpm.env example | '# HELP_ROOT=//server/share/fpm_releases' after one purpose comment line; parsed as a comment, so no HELP_ROOT key | D3 | example-line |
 | absent optional folder | _copy_folder returns ([], [], []) when source_root / name is not a directory | D4 | skip-absent |
-| shipped set | frozenset(p.relative_to(dest_root).as_posix() for p in copied), in both modes; each swapped tail is URL-decoded and compared with it ignoring case (casefold) | review R7, adopted by the developer on 2026-11-09: a departure from spec Section 4, which checks targets on disk under check_root | - |
+| shipped set | frozenset(p.relative_to(dest_root).as_posix() for p in copied), in both modes; the tail of every href under new_prefix, swapped or already present, is URL-decoded and compared with it ignoring case (casefold) | review R7, adopted by the developer on 2026-11-09: a departure from spec Section 4, which checks targets on disk under check_root | - |
 
 ## Formats
 
@@ -156,7 +156,7 @@ How the entry matches (a real _walk_folder probe on 2026-11-09 shipped exactly t
    - `swap_atbx_links(atbx: Path, swap: LinkSwap, shipped: FrozenSet[str], apply: bool) -> LinkSwapResult`. shipped holds the repo-relative posix paths of the files the release ships; the caller builds it from ProdCopier's copied list. It replaces spec Section 4's check_root (review R7, adopted by the developer): no link target is ever probed on disk.
 3. Read: iterate zf.infolist() and read each member with zf.read(info), never zf.read(name), so every entry is read as itself. Scan only members whose name ends .xml, .rc or .content (ignoring case); tool.content is scanned like the others. Directory entries and every other member (png, py, link) are carried as raw bytes and never decoded, even when they hold the prefix text. Decode a scanned member by its byte-order mark: UTF-8 BOM, UTF-16 LE BOM, UTF-16 BE BOM, else plain UTF-8; keep the encoding and the BOM (one BOM, never doubled). A scanned member that does not decode is an error naming the member.
 4. Match: the old prefix, escaped, ignoring case, followed by a tail: the longest run of characters other than double quote, single quote, backslash, '<', '>', '&', '#', '?' and whitespace. The .rc closes an href with a JSON-escaped quote (backslash) and the .xml with &quot; (ampersand), so the tail stops there. Replace only the prefix with new_prefix; the tail never changes, and every other byte of the member is kept (the tests compare whole members byte for byte). Count each replacement in swap_count; '#anchor', http(s) and hrefs the prefix does not match are not rewritten.
-5. Targets: each swapped tail, URL-decoded (urllib.parse.unquote), must be in shipped, compared ignoring case (casefold: the links resolve on case-insensitive Windows shares). Each absent tail joins missing_targets exactly once however often it occurs, as the href writes it.
+5. Targets: every file: href under new_prefix, swapped or already present, has its tail (the text after new_prefix) URL-decoded (urllib.parse.unquote) and checked against shipped, compared ignoring case (casefold: the links resolve on case-insensitive Windows shares). Each absent tail joins missing_targets exactly once however often it occurs, as the href writes it.
 6. Foreign file: hrefs (D1 = file-foreign-unc-target, amended): after the swap, search every scanned member, also one where nothing matched the old prefix, for (?i)\bfile:/ followed by tail characters. Each href found that does not start with new_prefix (compared ignoring case) is an error naming the member and the href, drive (file:///Z:/...) and UNC (file://other/share/...) alike. Prose such as 'Output file: name' never matches: no slash follows the colon.
 7. Non-UNC target (D1 amendment): when swap_count > 0 and new_prefix does not match (?i)^file://[^/] (a UNC prefix is file://server/...; file:///X:/ is a drive), add one error naming new_prefix and saying to set HELP_ROOT to a UNC share. No such error when swap_count is 0.
 8. All or nothing: write only when apply is True, swap_count > 0 and missing_targets and errors are empty; otherwise the archive is never opened for writing. The write goes to a temp file created in atbx.parent, member by member in infolist order: a fresh ZipInfo per member copying filename, date_time, compress_type, external_attr, create_system and comment; a changed member re-encoded in its original encoding with its original BOM; every other member with its original bytes. Validate the temp archive with zipfile.ZipFile (it opens, ZipFile.testzip() returns None, each changed member decodes), then os.replace(temp, atbx). Any failure there (validation, or os.replace refused because the archive is read-only) removes the temp file, adds one error, and leaves the original untouched.

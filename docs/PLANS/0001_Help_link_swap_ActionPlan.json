@@ -4,8 +4,8 @@
   "completed": "2026-11-10",
   "source_document": "E:/automation/toolboxes/floodplain_development/docs/superpowers/specs/2026-11-09-toolbox-help-links-design.md",
   "documentation": "docs/PLANS/0001_Help_link_swap_PIP.md",
-  "branch": null,
-  "base_branch": "main",
+  "branch": "0003-help-link-swap",
+  "base_branch": "0002-python-env",
   "execution_model": "serial",
   "context": {
     "project": "Production_Convert",
@@ -52,7 +52,7 @@
         "date": "2026-11-10",
         "seal": "3496549ccc3b42551f3713a1a687fad496b93c30ad308908384a1fb96c33bdb1"
       },
-      "notes": "The planned tests need an interpreter with pydantic>=2 and pytest: the repo .venv (Python 3.14.3, pydantic 2.14.2, pytest 9.2.0) or HARNESS_PY (arc_3_4_0: Python 3.11.10, pydantic 2.4.2, pytest 7.4.3), which PLAN red used. 'python' in the commands means one of them.",
+      "notes": "The planned tests need an interpreter with pydantic>=2 and pytest: the repo .venv (Python 3.14.3, pydantic 2.14.2, pytest 9.2.0) or HARNESS_PY (arc_3_4_0: Python 3.11.10, pydantic 2.4.2, pytest 7.4.3), which PLAN red used. 'python' in the commands means one of them. Provenance: the plan was written on main at base 33fe6c3, which is not an ancestor of 0003-help-link-swap; its tree 48254d5 equals the tree of db07002, the merge base with 0002-python-env, so the anchors read at the base hold on this branch.",
       "model": "haiku",
       "anchors": [
         {
@@ -239,7 +239,8 @@
         },
         {
           "run": "python -m ruff check conversion/prod_deploy.py tests/test_fpm_json_help_pages.py",
-          "expect": "All checks passed!"
+          "expect": "All checks passed!",
+          "writes": []
         }
       ],
       "tests": [
@@ -268,7 +269,7 @@
     {
       "id": "TASK-3",
       "title": "conversion/help_links.py: LinkSwap, LinkSwapResult and swap_atbx_links",
-      "action": "0. Precondition: execution waits for the spec's 'Gate: links work in Pro' section (its 'Order of work' puts Section 4 after the gate): the developer has confirmed that ArcGIS Pro follows a file: link from a tool's '?' page. If the gate fails, record this item with --blocked naming the gate result; this precondition does not block the freeze.\n1. Copy docs/PLANS/0001/tests/tests/test_help_links.py to tests/test_help_links.py.\n2. New module conversion/help_links.py: `from __future__ import annotations`, typing-module hints (Optional, Tuple, List, FrozenSet; no X | Y, per pyproject.toml ruff ignores), functions under 50 lines, no first or second person. It imports only the standard library and conversion.project_model.\n   - `@dataclass(frozen=True) class LinkSwap: old_prefix: str; new_prefix: str`, with classmethod `for_paths(paths: ProjectPaths) -> LinkSwap`: old_prefix = paths.source_root.as_uri() + '/', new_prefix = (paths.help_root or paths.dest_root).as_uri() + '/'.\n   - `@dataclass(frozen=True) class LinkSwapResult: changed_members: Tuple[str, ...]; swap_count: int; missing_targets: Tuple[str, ...]; errors: Tuple[str, ...]`, with property `ok` = no missing targets and no errors.\n   - `swap_atbx_links(atbx: Path, swap: LinkSwap, shipped: FrozenSet[str], apply: bool) -> LinkSwapResult`. shipped holds the repo-relative posix paths of the files the release ships; the caller builds it from ProdCopier's copied list. It replaces spec Section 4's check_root (review R7, adopted by the developer): no link target is ever probed on disk.\n3. Read: iterate zf.infolist() and read each member with zf.read(info), never zf.read(name), so every entry is read as itself. Scan only members whose name ends .xml, .rc or .content (ignoring case); tool.content is scanned like the others. Directory entries and every other member (png, py, link) are carried as raw bytes and never decoded, even when they hold the prefix text. Decode a scanned member by its byte-order mark: UTF-8 BOM, UTF-16 LE BOM, UTF-16 BE BOM, else plain UTF-8; keep the encoding and the BOM (one BOM, never doubled). A scanned member that does not decode is an error naming the member.\n4. Match: the old prefix, escaped, ignoring case, followed by a tail: the longest run of characters other than double quote, single quote, backslash, '<', '>', '&', '#', '?' and whitespace. The .rc closes an href with a JSON-escaped quote (backslash) and the .xml with &quot; (ampersand), so the tail stops there. Replace only the prefix with new_prefix; the tail never changes, and every other byte of the member is kept (the tests compare whole members byte for byte). Count each replacement in swap_count; '#anchor', http(s) and hrefs the prefix does not match are not rewritten.\n5. Targets: each swapped tail, URL-decoded (urllib.parse.unquote), must be in shipped, compared ignoring case (casefold: the links resolve on case-insensitive Windows shares). Each absent tail joins missing_targets exactly once however often it occurs, as the href writes it.\n6. Foreign file: hrefs (D1 = file-foreign-unc-target, amended): after the swap, search every scanned member, also one where nothing matched the old prefix, for (?i)\\bfile:/ followed by tail characters. Each href found that does not start with new_prefix (compared ignoring case) is an error naming the member and the href, drive (file:///Z:/...) and UNC (file://other/share/...) alike. Prose such as 'Output file: name' never matches: no slash follows the colon.\n7. Non-UNC target (D1 amendment): when swap_count > 0 and new_prefix does not match (?i)^file://[^/] (a UNC prefix is file://server/...; file:///X:/ is a drive), add one error naming new_prefix and saying to set HELP_ROOT to a UNC share. No such error when swap_count is 0.\n8. All or nothing: write only when apply is True, swap_count > 0 and missing_targets and errors are empty; otherwise the archive is never opened for writing. The write goes to a temp file created in atbx.parent, member by member in infolist order: a fresh ZipInfo per member copying filename, date_time, compress_type, external_attr, create_system and comment; a changed member re-encoded in its original encoding with its original BOM; every other member with its original bytes. Validate the temp archive with zipfile.ZipFile (it opens, ZipFile.testzip() returns None, each changed member decodes), then os.replace(temp, atbx). Any failure there (validation, or os.replace refused because the archive is read-only) removes the temp file, adds one error, and leaves the original untouched.\n9. Return the result with changed_members in archive order.",
+      "action": "0. Precondition: execution waits for the spec's 'Gate: links work in Pro' section (its 'Order of work' puts Section 4 after the gate): the developer has confirmed that ArcGIS Pro follows a file: link from a tool's '?' page. If the gate fails, record this item with --blocked naming the gate result; this precondition does not block the freeze.\n1. Copy docs/PLANS/0001/tests/tests/test_help_links.py to tests/test_help_links.py.\n2. New module conversion/help_links.py: `from __future__ import annotations`, typing-module hints (Optional, Tuple, List, FrozenSet; no X | Y, per pyproject.toml ruff ignores), functions under 50 lines, no first or second person. It imports only the standard library and conversion.project_model.\n   - `@dataclass(frozen=True) class LinkSwap: old_prefix: str; new_prefix: str`, with classmethod `for_paths(paths: ProjectPaths) -> LinkSwap`: old_prefix = paths.source_root.as_uri() + '/', new_prefix = (paths.help_root or paths.dest_root).as_uri() + '/'.\n   - `@dataclass(frozen=True) class LinkSwapResult: changed_members: Tuple[str, ...]; swap_count: int; missing_targets: Tuple[str, ...]; errors: Tuple[str, ...]`, with property `ok` = no missing targets and no errors.\n   - `swap_atbx_links(atbx: Path, swap: LinkSwap, shipped: FrozenSet[str], apply: bool) -> LinkSwapResult`. shipped holds the repo-relative posix paths of the files the release ships; the caller builds it from ProdCopier's copied list. It replaces spec Section 4's check_root (review R7, adopted by the developer): no link target is ever probed on disk.\n3. Read: iterate zf.infolist() and read each member with zf.read(info), never zf.read(name), so every entry is read as itself. Scan only members whose name ends .xml, .rc or .content (ignoring case); tool.content is scanned like the others. Directory entries and every other member (png, py, link) are carried as raw bytes and never decoded, even when they hold the prefix text. Decode a scanned member by its byte-order mark: UTF-8 BOM, UTF-16 LE BOM, UTF-16 BE BOM, else plain UTF-8; keep the encoding and the BOM (one BOM, never doubled). A scanned member that does not decode is an error naming the member.\n4. Match: the old prefix, escaped, ignoring case, followed by a tail: the longest run of characters other than double quote, single quote, backslash, '<', '>', '&', '#', '?' and whitespace. The .rc closes an href with a JSON-escaped quote (backslash) and the .xml with &quot; (ampersand), so the tail stops there. Replace only the prefix with new_prefix; the tail never changes, and every other byte of the member is kept (the tests compare whole members byte for byte). Count each replacement in swap_count; '#anchor', http(s) and hrefs the prefix does not match are not rewritten.\n5. Targets: every file: href under new_prefix, swapped or already present, has its tail (the text after new_prefix) URL-decoded (urllib.parse.unquote) and checked against shipped, compared ignoring case (casefold: the links resolve on case-insensitive Windows shares). Each absent tail joins missing_targets exactly once however often it occurs, as the href writes it.\n6. Foreign file: hrefs (D1 = file-foreign-unc-target, amended): after the swap, search every scanned member, also one where nothing matched the old prefix, for (?i)\\bfile:/ followed by tail characters. Each href found that does not start with new_prefix (compared ignoring case) is an error naming the member and the href, drive (file:///Z:/...) and UNC (file://other/share/...) alike. Prose such as 'Output file: name' never matches: no slash follows the colon.\n7. Non-UNC target (D1 amendment): when swap_count > 0 and new_prefix does not match (?i)^file://[^/] (a UNC prefix is file://server/...; file:///X:/ is a drive), add one error naming new_prefix and saying to set HELP_ROOT to a UNC share. No such error when swap_count is 0.\n8. All or nothing: write only when apply is True, swap_count > 0 and missing_targets and errors are empty; otherwise the archive is never opened for writing. The write goes to a temp file created in atbx.parent, member by member in infolist order: a fresh ZipInfo per member copying filename, date_time, compress_type, external_attr, create_system and comment; a changed member re-encoded in its original encoding with its original BOM; every other member with its original bytes. Validate the temp archive with zipfile.ZipFile (it opens, ZipFile.testzip() returns None, each changed member decodes), then os.replace(temp, atbx). Any failure there (validation, or os.replace refused because the archive is read-only) removes the temp file, adds one error, and leaves the original untouched.\n9. Return the result with changed_members in archive order.",
       "files": [
         "conversion/help_links.py",
         "tests/test_help_links.py"
@@ -320,7 +321,7 @@
         "date": "2026-11-10",
         "seal": "262838bee673a8d5433d5fbce7bc4d2a9ae73e328868807cfddff5a4466889c7"
       },
-      "notes": "The planned tests need an interpreter with pydantic>=2 and pytest: the repo .venv (Python 3.14.3, pydantic 2.14.2, pytest 9.2.0) or HARNESS_PY (arc_3_4_0: Python 3.11.10, pydantic 2.4.2, pytest 7.4.3), which PLAN red used. 'python' in the commands means one of them.",
+      "notes": "The planned tests need an interpreter with pydantic>=2 and pytest: the repo .venv (Python 3.14.3, pydantic 2.14.2, pytest 9.2.0) or HARNESS_PY (arc_3_4_0: Python 3.11.10, pydantic 2.4.2, pytest 7.4.3), which PLAN red used. 'python' in the commands means one of them. Post-record change (commit 4e7bb22): the target check covers every file: href under new_prefix, swapped or already present (scan.linked from _sort_hrefs, conversion/help_links.py:146-148,248), and tests/test_help_links.py gains test_link_already_at_the_release_prefix_is_checked and test_shipped_link_already_at_the_release_prefix_is_ok. The sealed record (tree 9e038a5, 25 nodes) predates both; the item's tests list stays as recorded until TASK-3 is recorded again.",
       "model": "opus",
       "anchors": [
         {
@@ -629,10 +630,10 @@
   ],
   "base_commit": "33fe6c33873c195d4ac6e62a8bce31bd73ee5dae",
   "frozen": {
-    "commit": "33fe6c33873c195d4ac6e62a8bce31bd73ee5dae",
-    "tree": "48254d50f6e554d50626ea0d30597a9e07e4ba5e",
-    "date": "2026-11-09",
-    "digest": "65079ba9f99dc3f5fe89d4b1bfd50ca4791fad4296d3861cb05afac46746e1d0",
+    "commit": "cc0c2d200c5f7c20b5b34664a773fce6ea6a3224",
+    "tree": "30a78e1eb45ce792d3c7f4b094dd9dea5ecb3183",
+    "date": "2026-11-10",
+    "digest": "1f476894174329374ff2b5451544c48e49818c66683419d26dd07a9c300e4645",
     "records": "sealed"
   },
   "decisions": [
@@ -760,7 +761,7 @@
     {
       "name": "href tail terminators",
       "value": "double quote, single quote, backslash, <, >, &, #, ? and whitespace; Path.as_uri() percent-encodes each of them (probe: 'E:/a b/c&d#e' -> file:///E:/a%20b/c%26d%23e)",
-      "source": "spec Section 4 Module; live archive .rc (see LIVE_ATBX); probe 2026-11-09"
+      "source": "spec Section 4 Module; live archive .rc (see the 'live archive file: hrefs' value); probe 2026-11-09"
     },
     {
       "name": "UNC link prefix",
@@ -827,7 +828,7 @@
     },
     {
       "name": "shipped set",
-      "value": "frozenset(p.relative_to(dest_root).as_posix() for p in copied), in both modes; each swapped tail is URL-decoded and compared with it ignoring case (casefold)",
+      "value": "frozenset(p.relative_to(dest_root).as_posix() for p in copied), in both modes; the tail of every href under new_prefix, swapped or already present, is URL-decoded and compared with it ignoring case (casefold)",
       "source": "review R7, adopted by the developer on 2026-11-09: a departure from spec Section 4, which checks targets on disk under check_root"
     }
   ],
