@@ -51,7 +51,8 @@ def _generate_project_version_folder_name(project_name: str, version_name: str) 
 def _parse_env(env_path: Path) -> dict:
     """
     Parse a simple KEY=VALUE env file.
-    Ignores blank lines and lines starting with #.
+    Ignores blank lines and lines whose first non-blank character is #.
+    A trailing "# ..." after a value is not a comment and stays in the value.
     Strips surrounding quotes from values.
     """
     result: dict = {}
@@ -175,12 +176,16 @@ def _tracked_paths(source_root: Path) -> FrozenSet[str]:
     Return the posix paths, relative to source_root, that git tracks there.
 
     Reads the index (``git ls-files``), so a staged file counts as tracked.
-    Raises RuntimeError when git fails, e.g. source_root is not a repository.
+    Raises RuntimeError when git fails, e.g. source_root is not a repository,
+    or when the git executable is not on PATH.
     """
-    proc = subprocess.run(
-        ["git", "-C", str(source_root), "ls-files", "-z"],
-        capture_output=True,
-    )
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(source_root), "ls-files", "-z"],
+            capture_output=True,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError(f"git not found on PATH: {exc}") from exc
     if proc.returncode != 0:
         detail = proc.stderr.decode("utf-8", "replace").strip()
         raise RuntimeError(f"git ls-files failed in {source_root}: {detail}")
@@ -192,15 +197,18 @@ def _dirty_tracked_paths(source_root: Path) -> List[str]:
     Return tracked paths under source_root with staged or unstaged changes.
 
     Paths are relative to the repository root, as ``git status --porcelain``
-    reports them. Raises RuntimeError when git fails.
+    reports them. Raises RuntimeError when git fails or is not on PATH.
     """
-    proc = subprocess.run(
-        [
-            "git", "-C", str(source_root), "status",
-            "--porcelain", "-z", "--untracked-files=no", "--", ".",
-        ],
-        capture_output=True,
-    )
+    try:
+        proc = subprocess.run(
+            [
+                "git", "-C", str(source_root), "status",
+                "--porcelain", "-z", "--untracked-files=no", "--", ".",
+            ],
+            capture_output=True,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError(f"git not found on PATH: {exc}") from exc
     if proc.returncode != 0:
         detail = proc.stderr.decode("utf-8", "replace").strip()
         raise RuntimeError(f"git status failed in {source_root}: {detail}")
