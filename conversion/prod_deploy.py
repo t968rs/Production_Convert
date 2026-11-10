@@ -4,7 +4,7 @@ prod_deploy.py - Production deployment config and file copier for fpm projects.
 Project definition layout:
     project_definitions/ (sibling of conversion/)
         <project>.json   -- folder specs and file filter patterns
-        <project>.env    -- SOURCE_ROOT and DEST_ROOT paths
+        <project>.env    -- SOURCE_ROOT and DEST_ROOT paths; optional HELP_ROOT (replaces DEST_ROOT in help links only)
 
 Usage:
     cfg, paths = load_project("fpm", "v3.17.2")
@@ -13,6 +13,11 @@ Usage:
 tracked_only (default True) requires git on PATH and a repository SOURCE_ROOT.
 Tracked files with uncommitted changes are listed in a stderr warning and
 copied anyway (working-tree contents, not the committed release).
+
+After the debug-override patch, each top-level .atbx copy has its development
+help links (SOURCE_ROOT) swapped to HELP_ROOT, else DEST_ROOT; a link whose
+target the release does not ship is an error. A dry run scans the source
+archive read-only.
 """
 
 from __future__ import annotations
@@ -25,6 +30,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import FrozenSet, List, Optional, Tuple
+from conversion.help_links import LinkSwap, swap_atbx_links
 from conversion.project_model import ProjectPaths, ProdConfig, FolderSpec
 
 
@@ -60,13 +66,12 @@ def _load_paths(env_path: Path, target_version: str) -> ProjectPaths:
     missing = [k for k in ("SOURCE_ROOT", "DEST_ROOT") if k not in data]
     if missing:
         raise KeyError(f"missing keys in {env_path}: {missing}")
+    folder = _generate_project_version_folder_name(env_path.stem, target_version)
+    help_value = data.get("HELP_ROOT", "")
     return ProjectPaths(
         source_root=Path(data["SOURCE_ROOT"]),
-        dest_root=Path(
-                data["DEST_ROOT"]) / _generate_project_version_folder_name(
-                env_path.stem,
-                target_version
-        ),
+        dest_root=Path(data["DEST_ROOT"]) / folder,
+        help_root=Path(help_value) / folder if help_value else None,
     )
 
 
@@ -295,6 +300,9 @@ class ProdCopier:
 
     dry_run:    Walk and filter without writing anything.
     clean_dest: Delete dest_root before copying (ensures no stale files).
+
+    After the debug-override patch, run swaps the help links of the top-level
+    .atbx copies; an archive swapped without error joins patched.
     """
 
     _DEBUG_PATTERN = re.compile(r"(_debug_override\s*=\s*)True")
@@ -346,6 +354,10 @@ class ProdCopier:
         patched.extend(p)
         errors_acc.extend(e)
 
+        p, e = self._swap_help_links(copied)
+        patched.extend(p)
+        errors_acc.extend(e)
+
         return CopyResult(
             tuple(copied), tuple(skipped), tuple(patched), tuple(errors_acc)
         )
@@ -365,6 +377,8 @@ class ProdCopier:
         self, spec: FolderSpec
     ) -> Tuple[List[Path], List[Path], List[str]]:
         src_root = self._paths.source_root / spec.name
+        if not src_root.is_dir():
+            return [], [], []
         files, untracked = _walk_folder(
             src_root,
             list(spec.denied),
@@ -432,6 +446,52 @@ class ProdCopier:
         except Exception as exc:
             errors.append(f"patch failed {target}: {exc}")
         return patched, errors
+
+    def _swap_help_links(self, copied: List[Path]) -> Tuple[List[Path], List[str]]:
+        """
+        Swap help links in the top-level .atbx copies; return (patched, errors).
+
+        shipped is every copied path relative to dest_root, so a link to a file
+        the release does not ship is a missing target. An archive joins patched
+        only when its swap is ok and changed at least one link (D2).
+        """
+        dest_root = self._paths.dest_root
+        archives = [
+            p for p in copied if p.suffix.lower() == ".atbx" and p.parent == dest_root
+        ]
+        if not archives:
+            return [], []
+        try:
+            swap = LinkSwap.for_paths(self._paths)
+        except ValueError as exc:
+            return [], [f"help link swap failed: {exc}"]
+        shipped = frozenset(p.relative_to(dest_root).as_posix() for p in copied)
+        patched: List[Path] = []
+        errors: List[str] = []
+        for dest_atbx in archives:
+            swapped, errs = self._swap_archive(dest_atbx, swap, shipped)
+            errors.extend(errs)
+            if swapped:
+                patched.append(dest_atbx)
+        return patched, errors
+
+    def _swap_archive(
+        self, dest_atbx: Path, swap: LinkSwap, shipped: FrozenSet[str]
+    ) -> Tuple[bool, List[str]]:
+        """
+        Swap one archive: the dest copy in a real run, the source read-only in a dry run.
+
+        Returns (swapped, errors); swapped is True when the result is ok with links swapped.
+        """
+        name = dest_atbx.name
+        target = self._paths.source_root / name if self._dry_run else dest_atbx
+        try:
+            result = swap_atbx_links(target, swap, shipped, apply=not self._dry_run)
+        except Exception as exc:
+            return False, [f"help link swap failed {target}: {exc}"]
+        errors = [f"help link target missing in {name}: {tail}" for tail in result.missing_targets]
+        errors.extend(f"help link error in {name}: {err}" for err in result.errors)
+        return result.ok and result.swap_count > 0, errors
 
     def _copy_file(self, src: Path, dst: Path) -> Tuple[bool, Optional[str]]:
         if self._dry_run:

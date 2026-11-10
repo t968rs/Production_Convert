@@ -22,6 +22,7 @@
       "denied": ["reference_modules/**", "toolbox_figures/**",
                  "env/**", "db/**", "git_curated/**", "esri_docs/**",
                  "field_maps/gdb_schemas/**", "esriCRS/_runtime_cache.json"]
-    }
+    },
+    { "name": "tool_metadata", "required": false, "allowed": ["tool_help/*.html", "tool_help/img/**"], "denied": ["tool_help/_fragments/**", "tool_help/_template.html"] }
   ]
 }
