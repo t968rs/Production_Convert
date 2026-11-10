@@ -1,6 +1,7 @@
 {
   "plan_id": "0001",
   "plan_created": "2026-11-09",
+  "completed": "2026-11-10",
   "source_document": "E:/automation/toolboxes/floodplain_development/docs/superpowers/specs/2026-11-09-toolbox-help-links-design.md",
   "documentation": "docs/PLANS/0001_Help_link_swap_PIP.md",
   "branch": null,
@@ -26,8 +27,31 @@
         "project_definitions/fpm.env"
       ],
       "dependencies": [],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree cbc8ec9: 6 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "cbc8ec9a0ed5065632c970a3560b778cb293e524"
+          },
+          "tests": {
+            "nodes": [
+              "tests/test_prod_deploy_help_root.py::test_help_root_gets_the_release_folder",
+              "tests/test_prod_deploy_help_root.py::test_help_root_absent_is_none",
+              "tests/test_prod_deploy_help_root.py::test_empty_help_root_is_none",
+              "tests/test_prod_deploy_help_root.py::test_two_field_construction_keeps_working",
+              "tests/test_prod_deploy_help_root.py::test_load_project_reads_help_root",
+              "tests/test_prod_deploy_help_root.py::test_fpm_env_shows_help_root_as_a_comment"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/test_prod_deploy_help_root.py::test_help_root_gets_the_release_folder tests/test_prod_deploy_help_root.py::test_help_root_absent_is_none tests/test_prod_deploy_help_root.py::test_empty_help_root_is_none tests/test_prod_deploy_help_root.py::test_two_field_construction_keeps_working tests/test_prod_deploy_help_root.py::test_load_project_reads_help_root tests/test_prod_deploy_help_root.py::test_fpm_env_shows_help_root_as_a_comment"
+          }
+        },
+        "date": "2026-11-10",
+        "seal": "3496549ccc3b42551f3713a1a687fad496b93c30ad308908384a1fb96c33bdb1"
+      },
       "notes": "The planned tests need an interpreter with pydantic>=2 and pytest: the repo .venv (Python 3.14.3, pydantic 2.14.2, pytest 9.2.0) or HARNESS_PY (arc_3_4_0: Python 3.11.10, pydantic 2.4.2, pytest 7.4.3), which PLAN red used. 'python' in the commands means one of them.",
       "model": "haiku",
       "anchors": [
@@ -135,8 +159,30 @@
       "dependencies": [
         "TASK-1"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree 78b3a40: 5 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "78b3a402a5ae05ae41b42e60dba1be6dd0c0fbd6"
+          },
+          "tests": {
+            "nodes": [
+              "tests/test_fpm_json_help_pages.py::test_tool_metadata_folder_is_optional",
+              "tests/test_fpm_json_help_pages.py::test_walk_ships_pages_and_images_only",
+              "tests/test_fpm_json_help_pages.py::test_run_ships_tracked_pages_only",
+              "tests/test_fpm_json_help_pages.py::test_absent_optional_folder_is_skipped[real]",
+              "tests/test_fpm_json_help_pages.py::test_absent_optional_folder_is_skipped[dry]"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/test_fpm_json_help_pages.py::test_tool_metadata_folder_is_optional tests/test_fpm_json_help_pages.py::test_walk_ships_pages_and_images_only tests/test_fpm_json_help_pages.py::test_run_ships_tracked_pages_only tests/test_fpm_json_help_pages.py::test_absent_optional_folder_is_skipped[real] tests/test_fpm_json_help_pages.py::test_absent_optional_folder_is_skipped[dry]"
+          }
+        },
+        "date": "2026-11-10",
+        "seal": "64a03320532b4b428a00c17e516ac28f31aef88fb833d8f88c1c927c77a7d811"
+      },
       "notes": "The planned tests need an interpreter with pydantic>=2 and pytest: the repo .venv (Python 3.14.3, pydantic 2.14.2, pytest 9.2.0) or HARNESS_PY (arc_3_4_0: Python 3.11.10, pydantic 2.4.2, pytest 7.4.3), which PLAN red used. 'python' in the commands means one of them.",
       "model": "haiku",
       "anchors": [
@@ -230,8 +276,50 @@
       "dependencies": [
         "TASK-1"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree 9e038a5: 25 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "9e038a5fe22268f8e2bf4de38b3d896b0c1b0d77"
+          },
+          "tests": {
+            "nodes": [
+              "tests/test_help_links.py::test_prefixes_without_help_root",
+              "tests/test_help_links.py::test_help_root_replaces_dest_root_in_links",
+              "tests/test_help_links.py::test_swap_count_and_tail_kept",
+              "tests/test_help_links.py::test_prefix_match_ignores_case",
+              "tests/test_help_links.py::test_byte_order_mark_is_kept[utf-16-be]",
+              "tests/test_help_links.py::test_byte_order_mark_is_kept[utf-16-le]",
+              "tests/test_help_links.py::test_byte_order_mark_is_kept[utf-8-sig]",
+              "tests/test_help_links.py::test_unscanned_members_are_byte_identical",
+              "tests/test_help_links.py::test_anchor_and_http_hrefs_are_left_alone",
+              "tests/test_help_links.py::test_prose_file_colon_is_not_a_link",
+              "tests/test_help_links.py::test_url_encoded_tail_is_decoded_for_the_check",
+              "tests/test_help_links.py::test_tail_check_ignores_case",
+              "tests/test_help_links.py::test_member_order_compression_and_timestamps_are_kept",
+              "tests/test_help_links.py::test_missing_target_writes_nothing",
+              "tests/test_help_links.py::test_page_on_disk_but_not_shipped_is_missing",
+              "tests/test_help_links.py::test_each_missing_tail_is_reported_once",
+              "tests/test_help_links.py::test_leftover_drive_href_is_an_error",
+              "tests/test_help_links.py::test_lone_lowercase_drive_href_is_an_error",
+              "tests/test_help_links.py::test_foreign_unc_href_is_an_error",
+              "tests/test_help_links.py::test_local_target_with_links_is_one_error",
+              "tests/test_help_links.py::test_local_target_without_links_is_ok",
+              "tests/test_help_links.py::test_read_only_archive_leaves_no_temp_file",
+              "tests/test_help_links.py::test_failed_validation_leaves_no_temp_file",
+              "tests/test_help_links.py::test_dry_run_reports_and_writes_nothing",
+              "tests/test_help_links.py::test_archive_without_links_is_not_rewritten"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/test_help_links.py::test_prefixes_without_help_root tests/test_help_links.py::test_help_root_replaces_dest_root_in_links tests/test_help_links.py::test_swap_count_and_tail_kept tests/test_help_links.py::test_prefix_match_ignores_case tests/test_help_links.py::test_byte_order_mark_is_kept[utf-16-be] tests/test_help_links.py::test_byte_order_mark_is_kept[utf-16-le] tests/test_help_links.py::test_byte_order_mark_is_kept[utf-8-sig] tests/test_help_links.py::test_unscanned_members_are_byte_identical tests/test_help_links.py::test_anchor_and_http_hrefs_are_left_alone tests/test_help_links.py::test_prose_file_colon_is_not_a_link tests/test_help_links.py::test_url_encoded_tail_is_decoded_for_the_check tests/test_help_links.py::test_tail_check_ignores_case tests/test_help_links.py::test_member_order_compression_and_timestamps_are_kept tests/test_help_links.py::test_missing_target_writes_nothing tests/test_help_links.py::test_page_on_disk_but_not_shipped_is_missing tests/test_help_links.py::test_each_missing_tail_is_reported_once tests/test_help_links.py::test_leftover_drive_href_is_an_error tests/test_help_links.py::test_lone_lowercase_drive_href_is_an_error tests/test_help_links.py::test_foreign_unc_href_is_an_error tests/test_help_links.py::test_local_target_with_links_is_one_error tests/test_help_links.py::test_local_target_without_links_is_ok tests/test_help_links.py::test_read_only_archive_leaves_no_temp_file tests/test_help_links.py::test_failed_validation_leaves_no_temp_file tests/test_help_links.py::test_dry_run_reports_and_writes_nothing tests/test_help_links.py::test_archive_without_links_is_not_rewritten"
+          }
+        },
+        "date": "2026-11-10",
+        "seal": "262838bee673a8d5433d5fbce7bc4d2a9ae73e328868807cfddff5a4466889c7"
+      },
       "notes": "The planned tests need an interpreter with pydantic>=2 and pytest: the repo .venv (Python 3.14.3, pydantic 2.14.2, pytest 9.2.0) or HARNESS_PY (arc_3_4_0: Python 3.11.10, pydantic 2.4.2, pytest 7.4.3), which PLAN red used. 'python' in the commands means one of them.",
       "model": "opus",
       "anchors": [
@@ -384,8 +472,33 @@
         "TASK-2",
         "TASK-3"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree cdfff33: 8 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "cdfff336c8354af63516f68d8b533e5e2860a3be"
+          },
+          "tests": {
+            "nodes": [
+              "tests/test_prod_deploy_help_links.py::test_run_swaps_links_in_the_copied_archive",
+              "tests/test_prod_deploy_help_links.py::test_run_reports_a_missing_target_and_keeps_the_copy",
+              "tests/test_prod_deploy_help_links.py::test_local_dest_without_help_root_is_one_error",
+              "tests/test_prod_deploy_help_links.py::test_stale_dest_file_does_not_satisfy_a_link",
+              "tests/test_prod_deploy_help_links.py::test_link_to_a_denied_source_file_fails[real]",
+              "tests/test_prod_deploy_help_links.py::test_link_to_a_denied_source_file_fails[dry]",
+              "tests/test_prod_deploy_help_links.py::test_swap_failure_is_one_error_and_keeps_debug_patch",
+              "tests/test_prod_deploy_help_links.py::test_dry_run_checks_the_source_and_writes_nothing"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/test_prod_deploy_help_links.py::test_run_swaps_links_in_the_copied_archive tests/test_prod_deploy_help_links.py::test_run_reports_a_missing_target_and_keeps_the_copy tests/test_prod_deploy_help_links.py::test_local_dest_without_help_root_is_one_error tests/test_prod_deploy_help_links.py::test_stale_dest_file_does_not_satisfy_a_link tests/test_prod_deploy_help_links.py::test_link_to_a_denied_source_file_fails[real] tests/test_prod_deploy_help_links.py::test_link_to_a_denied_source_file_fails[dry] tests/test_prod_deploy_help_links.py::test_swap_failure_is_one_error_and_keeps_debug_patch tests/test_prod_deploy_help_links.py::test_dry_run_checks_the_source_and_writes_nothing"
+          }
+        },
+        "date": "2026-11-10",
+        "seal": "c9aa07e6a7e06c0288068ac2eddd44a9a30afd5fb16fc0e35f9fd896501ae039"
+      },
       "notes": "The planned tests need an interpreter with pydantic>=2 and pytest: the repo .venv (Python 3.14.3, pydantic 2.14.2, pytest 9.2.0) or HARNESS_PY (arc_3_4_0: Python 3.11.10, pydantic 2.4.2, pytest 7.4.3), which PLAN red used. 'python' in the commands means one of them.",
       "model": "opus",
       "anchors": [

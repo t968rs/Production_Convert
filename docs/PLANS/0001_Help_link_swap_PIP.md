@@ -60,7 +60,7 @@
 
 ### TASK-1: ProjectPaths.help_root and optional HELP_ROOT parsing in _load_paths
 
-**Status:** PENDING | **Model:** haiku | **Depends on:** none
+**Status:** COMPLETE | **Model:** haiku | **Depends on:** none
 **Files:** `conversion/project_model.py`, `conversion/prod_deploy.py`, `tests/test_prod_deploy_help_root.py`, `project_definitions/fpm.env`
 
 **Anchors:**
@@ -84,21 +84,24 @@
 4. Module docstring line 7: `<project>.env -- SOURCE_ROOT and DEST_ROOT paths; optional HELP_ROOT (replaces DEST_ROOT in help links only)`.
 5. project_definitions/fpm.env (D3 = example-line): after the DEST_ROOT line add one comment line stating the purpose, e.g. '# Optional: UNC share the help links point at (FPM_<version> is appended); DEST_ROOT stays the copy target.', then the commented example '# HELP_ROOT=//server/share/fpm_releases'. _parse_env skips comment lines, so the tracked file still defines no HELP_ROOT. The file stays tracked; untracking it is the developer's call.
 
-- [ ] Test `tests/test_prod_deploy_help_root.py::test_help_root_gets_the_release_folder` fails with AttributeError, then passes
-- [ ] Test `tests/test_prod_deploy_help_root.py::test_help_root_absent_is_none` fails with AttributeError, then passes
-- [ ] Test `tests/test_prod_deploy_help_root.py::test_empty_help_root_is_none` fails with AttributeError, then passes
-- [ ] Test `tests/test_prod_deploy_help_root.py::test_two_field_construction_keeps_working` fails with AttributeError, then passes
-- [ ] Test `tests/test_prod_deploy_help_root.py::test_load_project_reads_help_root` fails with AttributeError, then passes
-- [ ] Test `tests/test_prod_deploy_help_root.py::test_fpm_env_shows_help_root_as_a_comment` fails with AssertionError, then passes
-- [ ] Run `python -m pytest tests/test_prod_deploy_help_root.py tests/test_prod_deploy_tracked.py tests/test_prod_deploy_dirty.py tests/test_run_exit_code.py -q`: every named test passes; no 'failed' or 'error' in the summary line
-- [ ] Run `python -m ruff check conversion/project_model.py conversion/prod_deploy.py tests/test_prod_deploy_help_root.py`: All checks passed!
-- [ ] Record it: `plan.py record 0001 TASK-1 --sha <sha>` or `--staged`
+- [x] Test `tests/test_prod_deploy_help_root.py::test_help_root_gets_the_release_folder` fails with AttributeError, then passes
+- [x] Test `tests/test_prod_deploy_help_root.py::test_help_root_absent_is_none` fails with AttributeError, then passes
+- [x] Test `tests/test_prod_deploy_help_root.py::test_empty_help_root_is_none` fails with AttributeError, then passes
+- [x] Test `tests/test_prod_deploy_help_root.py::test_two_field_construction_keeps_working` fails with AttributeError, then passes
+- [x] Test `tests/test_prod_deploy_help_root.py::test_load_project_reads_help_root` fails with AttributeError, then passes
+- [x] Test `tests/test_prod_deploy_help_root.py::test_fpm_env_shows_help_root_as_a_comment` fails with AssertionError, then passes
+- [x] Run `python -m pytest tests/test_prod_deploy_help_root.py tests/test_prod_deploy_tracked.py tests/test_prod_deploy_dirty.py tests/test_run_exit_code.py -q`: every named test passes; no 'failed' or 'error' in the summary line
+- [x] Run `python -m ruff check conversion/project_model.py conversion/prod_deploy.py tests/test_prod_deploy_help_root.py`: All checks passed!
+- [x] Record it: `plan.py record 0001 TASK-1 --sha <sha>` or `--staged`
 
-**Evidence:** not started
+**Evidence:** staged tree cbc8ec9: 6 test node(s) passed
+
+**Recorded:** 2026-11-10, staged, tree `cbc8ec9`
+- `python -m pytest -q -p no:cacheprovider --tb=auto tests/test_prod_deploy_help_root.py::test_help_root_gets_the_release_folder tests/test_prod_deploy_help_root.py::test_help_root_absent_is_none tests/test_prod_deploy_help_root.py::test_empty_help_root_is_none tests/test_prod_deploy_help_root.py::test_two_field_construction_keeps_working tests/test_prod_deploy_help_root.py::test_load_project_reads_help_root tests/test_prod_deploy_help_root.py::test_fpm_env_shows_help_root_as_a_comment`
 
 ### TASK-2: Ship tool_metadata/tool_help pages through fpm.json; skip an absent optional folder
 
-**Status:** PENDING | **Model:** haiku | **Depends on:** TASK-1
+**Status:** COMPLETE | **Model:** haiku | **Depends on:** TASK-1
 **Files:** `project_definitions/fpm.json`, `conversion/prod_deploy.py`, `tests/test_fpm_json_help_pages.py`
 
 **Anchors:**
@@ -119,20 +122,23 @@
 How the entry matches (a real _walk_folder probe on 2026-11-09 shipped exactly the pages and images): every pattern holds '/', so _matches compares the path relative to tool_metadata/ with fnmatch, whose '*' also crosses '/' and which ignores case on Windows (normcase). _recurse prunes a directory only when a deny pattern matches the directory path itself, so tool_help/_fragments is descended, but each file under it matches tool_help/_fragments/** and is denied before allowed is consulted. tools/, the *.xml, *.md and metadata_coverage.json under tool_metadata/ match no allowed pattern and stay out. The tracked filter (tracked_only, default True) still applies: an untracked page is skipped.
 3. D4 = skip-absent: in ProdCopier._copy_folder, return ([], [], []) when the source folder (source_root / spec.name) is not a directory. validate_source has already refused an absent required folder, so only a required: false folder reaches this; it is skipped with no error and no traceback, dry run included. TASK-2 runs after TASK-1 because both edit conversion/prod_deploy.py.
 
-- [ ] Test `tests/test_fpm_json_help_pages.py::test_tool_metadata_folder_is_optional` fails with AssertionError, then passes
-- [ ] Test `tests/test_fpm_json_help_pages.py::test_walk_ships_pages_and_images_only` fails with AssertionError, then passes
-- [ ] Test `tests/test_fpm_json_help_pages.py::test_run_ships_tracked_pages_only` fails with AssertionError, then passes
-- [ ] Test `tests/test_fpm_json_help_pages.py::test_absent_optional_folder_is_skipped[real]` fails with AssertionError, then passes
-- [ ] Test `tests/test_fpm_json_help_pages.py::test_absent_optional_folder_is_skipped[dry]` fails with AssertionError, then passes
-- [ ] Run `python -m pytest tests/test_fpm_json_help_pages.py tests/test_prod_deploy_tracked.py -q`: every named test passes; no 'failed' or 'error' in the summary line
-- [ ] Run `python -m ruff check conversion/prod_deploy.py tests/test_fpm_json_help_pages.py`: All checks passed!
-- [ ] Record it: `plan.py record 0001 TASK-2 --sha <sha>` or `--staged`
+- [x] Test `tests/test_fpm_json_help_pages.py::test_tool_metadata_folder_is_optional` fails with AssertionError, then passes
+- [x] Test `tests/test_fpm_json_help_pages.py::test_walk_ships_pages_and_images_only` fails with AssertionError, then passes
+- [x] Test `tests/test_fpm_json_help_pages.py::test_run_ships_tracked_pages_only` fails with AssertionError, then passes
+- [x] Test `tests/test_fpm_json_help_pages.py::test_absent_optional_folder_is_skipped[real]` fails with AssertionError, then passes
+- [x] Test `tests/test_fpm_json_help_pages.py::test_absent_optional_folder_is_skipped[dry]` fails with AssertionError, then passes
+- [x] Run `python -m pytest tests/test_fpm_json_help_pages.py tests/test_prod_deploy_tracked.py -q`: every named test passes; no 'failed' or 'error' in the summary line
+- [x] Run `python -m ruff check conversion/prod_deploy.py tests/test_fpm_json_help_pages.py`: All checks passed!
+- [x] Record it: `plan.py record 0001 TASK-2 --sha <sha>` or `--staged`
 
-**Evidence:** not started
+**Evidence:** staged tree 78b3a40: 5 test node(s) passed
+
+**Recorded:** 2026-11-10, staged, tree `78b3a40`
+- `python -m pytest -q -p no:cacheprovider --tb=auto tests/test_fpm_json_help_pages.py::test_tool_metadata_folder_is_optional tests/test_fpm_json_help_pages.py::test_walk_ships_pages_and_images_only tests/test_fpm_json_help_pages.py::test_run_ships_tracked_pages_only tests/test_fpm_json_help_pages.py::test_absent_optional_folder_is_skipped[real] tests/test_fpm_json_help_pages.py::test_absent_optional_folder_is_skipped[dry]`
 
 ### TASK-3: conversion/help_links.py: LinkSwap, LinkSwapResult and swap_atbx_links
 
-**Status:** PENDING | **Model:** opus | **Depends on:** TASK-1
+**Status:** COMPLETE | **Model:** opus | **Depends on:** TASK-1
 **Files:** `conversion/help_links.py`, `tests/test_help_links.py`
 
 **Anchors:**
@@ -156,40 +162,43 @@ How the entry matches (a real _walk_folder probe on 2026-11-09 shipped exactly t
 8. All or nothing: write only when apply is True, swap_count > 0 and missing_targets and errors are empty; otherwise the archive is never opened for writing. The write goes to a temp file created in atbx.parent, member by member in infolist order: a fresh ZipInfo per member copying filename, date_time, compress_type, external_attr, create_system and comment; a changed member re-encoded in its original encoding with its original BOM; every other member with its original bytes. Validate the temp archive with zipfile.ZipFile (it opens, ZipFile.testzip() returns None, each changed member decodes), then os.replace(temp, atbx). Any failure there (validation, or os.replace refused because the archive is read-only) removes the temp file, adds one error, and leaves the original untouched.
 9. Return the result with changed_members in archive order.
 
-- [ ] Test `tests/test_help_links.py::test_prefixes_without_help_root` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_help_root_replaces_dest_root_in_links` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_swap_count_and_tail_kept` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_prefix_match_ignores_case` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_byte_order_mark_is_kept[utf-16-be]` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_byte_order_mark_is_kept[utf-16-le]` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_byte_order_mark_is_kept[utf-8-sig]` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_unscanned_members_are_byte_identical` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_anchor_and_http_hrefs_are_left_alone` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_prose_file_colon_is_not_a_link` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_url_encoded_tail_is_decoded_for_the_check` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_tail_check_ignores_case` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_member_order_compression_and_timestamps_are_kept` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_missing_target_writes_nothing` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_page_on_disk_but_not_shipped_is_missing` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_each_missing_tail_is_reported_once` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_leftover_drive_href_is_an_error` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_lone_lowercase_drive_href_is_an_error` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_foreign_unc_href_is_an_error` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_local_target_with_links_is_one_error` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_local_target_without_links_is_ok` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_read_only_archive_leaves_no_temp_file` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_failed_validation_leaves_no_temp_file` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_dry_run_reports_and_writes_nothing` fails with ImportError, then passes
-- [ ] Test `tests/test_help_links.py::test_archive_without_links_is_not_rewritten` fails with ImportError, then passes
-- [ ] Run `python -m pytest tests/test_help_links.py -q`: every named test passes; no 'failed' or 'error' in the summary line
-- [ ] Run `python -m ruff check conversion/help_links.py tests/test_help_links.py`: All checks passed!
-- [ ] Record it: `plan.py record 0001 TASK-3 --sha <sha>` or `--staged`
+- [x] Test `tests/test_help_links.py::test_prefixes_without_help_root` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_help_root_replaces_dest_root_in_links` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_swap_count_and_tail_kept` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_prefix_match_ignores_case` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_byte_order_mark_is_kept[utf-16-be]` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_byte_order_mark_is_kept[utf-16-le]` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_byte_order_mark_is_kept[utf-8-sig]` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_unscanned_members_are_byte_identical` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_anchor_and_http_hrefs_are_left_alone` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_prose_file_colon_is_not_a_link` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_url_encoded_tail_is_decoded_for_the_check` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_tail_check_ignores_case` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_member_order_compression_and_timestamps_are_kept` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_missing_target_writes_nothing` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_page_on_disk_but_not_shipped_is_missing` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_each_missing_tail_is_reported_once` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_leftover_drive_href_is_an_error` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_lone_lowercase_drive_href_is_an_error` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_foreign_unc_href_is_an_error` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_local_target_with_links_is_one_error` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_local_target_without_links_is_ok` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_read_only_archive_leaves_no_temp_file` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_failed_validation_leaves_no_temp_file` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_dry_run_reports_and_writes_nothing` fails with ImportError, then passes
+- [x] Test `tests/test_help_links.py::test_archive_without_links_is_not_rewritten` fails with ImportError, then passes
+- [x] Run `python -m pytest tests/test_help_links.py -q`: every named test passes; no 'failed' or 'error' in the summary line
+- [x] Run `python -m ruff check conversion/help_links.py tests/test_help_links.py`: All checks passed!
+- [x] Record it: `plan.py record 0001 TASK-3 --sha <sha>` or `--staged`
 
-**Evidence:** not started
+**Evidence:** staged tree 9e038a5: 25 test node(s) passed
+
+**Recorded:** 2026-11-10, staged, tree `9e038a5`
+- `python -m pytest -q -p no:cacheprovider --tb=auto tests/test_help_links.py::test_prefixes_without_help_root tests/test_help_links.py::test_help_root_replaces_dest_root_in_links tests/test_help_links.py::test_swap_count_and_tail_kept tests/test_help_links.py::test_prefix_match_ignores_case tests/test_help_links.py::test_byte_order_mark_is_kept[utf-16-be] tests/test_help_links.py::test_byte_order_mark_is_kept[utf-16-le] tests/test_help_links.py::test_byte_order_mark_is_kept[utf-8-sig] tests/test_help_links.py::test_unscanned_members_are_byte_identical tests/test_help_links.py::test_anchor_and_http_hrefs_are_left_alone tests/test_help_links.py::test_prose_file_colon_is_not_a_link tests/test_help_links.py::test_url_encoded_tail_is_decoded_for_the_check tests/test_help_links.py::test_tail_check_ignores_case tests/test_help_links.py::test_member_order_compression_and_timestamps_are_kept tests/test_help_links.py::test_missing_target_writes_nothing tests/test_help_links.py::test_page_on_disk_but_not_shipped_is_missing tests/test_help_links.py::test_each_missing_tail_is_reported_once tests/test_help_links.py::test_leftover_drive_href_is_an_error tests/test_help_links.py::test_lone_lowercase_drive_href_is_an_error tests/test_help_links.py::test_foreign_unc_href_is_an_error tests/test_help_links.py::test_local_target_with_links_is_one_error tests/test_help_links.py::test_local_target_without_links_is_ok tests/test_help_links.py::test_read_only_archive_leaves_no_temp_file tests/test_help_links.py::test_failed_validation_leaves_no_temp_file tests/test_help_links.py::test_dry_run_reports_and_writes_nothing tests/test_help_links.py::test_archive_without_links_is_not_rewritten`
 
 ### TASK-4: Swap help links in ProdCopier.run after the debug-override patch
 
-**Status:** PENDING | **Model:** opus | **Depends on:** TASK-1, TASK-2, TASK-3
+**Status:** COMPLETE | **Model:** opus | **Depends on:** TASK-1, TASK-2, TASK-3
 **Files:** `conversion/prod_deploy.py`, `tests/test_prod_deploy_help_links.py`
 
 **Anchors:**
@@ -220,16 +229,19 @@ How the entry matches (a real _walk_folder probe on 2026-11-09 shipped exactly t
 4. New method `_swap_help_links(self, copied: List[Path]) -> Tuple[List[Path], List[str]]`: the archives are the paths in copied whose suffix is .atbx (ignoring case) and whose parent is dest_root (top-level copies land at dest_root / name; in a dry run copied lists those dest paths unwritten). With none, return ([], []) before building a LinkSwap, so runs without an archive (every existing ProdCopier test) never compute a URI. Build LinkSwap.for_paths(self._paths) once; a ValueError there (a relative SOURCE_ROOT or HELP_ROOT) is one error. Build shipped = frozenset(p.relative_to(dest_root).as_posix() for p in copied): copied holds dest paths in both modes, so the set is exactly what this release ships, and a link to an untracked page, a denied path (tool_help/_fragments/, _template.html, tools/*.xml) or a stale file left in dest_root by an earlier run is a missing target (review R7). Real run: swap_atbx_links(dest archive, swap, shipped, apply=True); the source archive is never opened. Dry run: swap_atbx_links(source_root / name, swap, shipped, apply=False): nothing was copied, so the source archive is scanned read-only. Wrap each archive's call in `except Exception as exc`, as _patch_debug_override does (conversion/prod_deploy.py:432-433): an exception is exactly one error string naming the archive and the exception, and the debug-override result already in patched stays. Each missing target becomes one error string naming the archive and the tail (e.g. f"help link target missing in {name}: {tail}"), and each result error one string naming the archive; the D1 non-UNC error therefore reaches CopyResult.errors once per archive. D2 = patched-dest: a result that is ok with swap_count > 0 adds the dest archive path to patched, in a real run after the write and in a dry run as the would-be path; otherwise nothing joins patched.
 5. Docstrings: the module docstring and the ProdCopier docstring name the help-link swap of the top-level .atbx copies, after the debug-override patch.
 
-- [ ] Test `tests/test_prod_deploy_help_links.py::test_run_swaps_links_in_the_copied_archive` fails with AssertionError, then passes
-- [ ] Test `tests/test_prod_deploy_help_links.py::test_run_reports_a_missing_target_and_keeps_the_copy` fails with AssertionError, then passes
-- [ ] Test `tests/test_prod_deploy_help_links.py::test_local_dest_without_help_root_is_one_error` fails with AssertionError, then passes
-- [ ] Test `tests/test_prod_deploy_help_links.py::test_stale_dest_file_does_not_satisfy_a_link` fails with AssertionError, then passes
-- [ ] Test `tests/test_prod_deploy_help_links.py::test_link_to_a_denied_source_file_fails[real]` fails with AssertionError, then passes
-- [ ] Test `tests/test_prod_deploy_help_links.py::test_link_to_a_denied_source_file_fails[dry]` fails with AssertionError, then passes
-- [ ] Test `tests/test_prod_deploy_help_links.py::test_swap_failure_is_one_error_and_keeps_debug_patch` fails with AttributeError, then passes
-- [ ] Test `tests/test_prod_deploy_help_links.py::test_dry_run_checks_the_source_and_writes_nothing` fails with AssertionError, then passes
-- [ ] Run `python -m pytest tests/test_prod_deploy_help_links.py tests/test_help_links.py tests/test_fpm_json_help_pages.py tests/test_prod_deploy_help_root.py tests/test_prod_deploy_tracked.py tests/test_prod_deploy_dirty.py tests/test_run_exit_code.py tests/test_run_args.py -q`: every named test passes; no 'failed' or 'error' in the summary line
-- [ ] Run `python -m ruff check conversion/prod_deploy.py tests/test_prod_deploy_help_links.py`: All checks passed!
-- [ ] Record it: `plan.py record 0001 TASK-4 --sha <sha>` or `--staged`
+- [x] Test `tests/test_prod_deploy_help_links.py::test_run_swaps_links_in_the_copied_archive` fails with AssertionError, then passes
+- [x] Test `tests/test_prod_deploy_help_links.py::test_run_reports_a_missing_target_and_keeps_the_copy` fails with AssertionError, then passes
+- [x] Test `tests/test_prod_deploy_help_links.py::test_local_dest_without_help_root_is_one_error` fails with AssertionError, then passes
+- [x] Test `tests/test_prod_deploy_help_links.py::test_stale_dest_file_does_not_satisfy_a_link` fails with AssertionError, then passes
+- [x] Test `tests/test_prod_deploy_help_links.py::test_link_to_a_denied_source_file_fails[real]` fails with AssertionError, then passes
+- [x] Test `tests/test_prod_deploy_help_links.py::test_link_to_a_denied_source_file_fails[dry]` fails with AssertionError, then passes
+- [x] Test `tests/test_prod_deploy_help_links.py::test_swap_failure_is_one_error_and_keeps_debug_patch` fails with AttributeError, then passes
+- [x] Test `tests/test_prod_deploy_help_links.py::test_dry_run_checks_the_source_and_writes_nothing` fails with AssertionError, then passes
+- [x] Run `python -m pytest tests/test_prod_deploy_help_links.py tests/test_help_links.py tests/test_fpm_json_help_pages.py tests/test_prod_deploy_help_root.py tests/test_prod_deploy_tracked.py tests/test_prod_deploy_dirty.py tests/test_run_exit_code.py tests/test_run_args.py -q`: every named test passes; no 'failed' or 'error' in the summary line
+- [x] Run `python -m ruff check conversion/prod_deploy.py tests/test_prod_deploy_help_links.py`: All checks passed!
+- [x] Record it: `plan.py record 0001 TASK-4 --sha <sha>` or `--staged`
 
-**Evidence:** not started
+**Evidence:** staged tree cdfff33: 8 test node(s) passed
+
+**Recorded:** 2026-11-10, staged, tree `cdfff33`
+- `python -m pytest -q -p no:cacheprovider --tb=auto tests/test_prod_deploy_help_links.py::test_run_swaps_links_in_the_copied_archive tests/test_prod_deploy_help_links.py::test_run_reports_a_missing_target_and_keeps_the_copy tests/test_prod_deploy_help_links.py::test_local_dest_without_help_root_is_one_error tests/test_prod_deploy_help_links.py::test_stale_dest_file_does_not_satisfy_a_link tests/test_prod_deploy_help_links.py::test_link_to_a_denied_source_file_fails[real] tests/test_prod_deploy_help_links.py::test_link_to_a_denied_source_file_fails[dry] tests/test_prod_deploy_help_links.py::test_swap_failure_is_one_error_and_keeps_debug_patch tests/test_prod_deploy_help_links.py::test_dry_run_checks_the_source_and_writes_nothing`
