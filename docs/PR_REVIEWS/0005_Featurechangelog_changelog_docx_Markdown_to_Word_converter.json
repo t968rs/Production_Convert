@@ -1,0 +1,345 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.2.0",
+  "pr": 5,
+  "pr_title": "Feature(changelog): `changelog_docx` Markdown to Word converter",
+  "branch": "0004-changelog-docx",
+  "base_branch": "0003-help-link-swap",
+  "base_sha": "7776653c2086bf31a76878b29f9ec1b11a81b604",
+  "head_sha": "4594c0a4bf55a84af04a21619455817ef3c24945",
+  "review_date": "2026-11-10",
+  "verdict": "READY TO MERGE - 11 of 11 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 999,
+    "deletions": 1,
+    "files_changed": 4,
+    "source": {
+      "additions": 999,
+      "deletions": 1,
+      "files_changed": 4
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (sonnet)",
+    "runtime (sonnet)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0005/pr5_20261110T185256Z/findings/config.json",
+    "docs/_scratch/pr_review/0005/pr5_20261110T185256Z/findings/tests.json",
+    "docs/_scratch/pr_review/0005/pr5_20261110T185256Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0005/pr5_20261110T185256Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "python-docx>=1.2.0 is a runtime dependency (not dev-only), matching its import in conversion/changelog_docx.py; list stays alphabetically ordered.",
+    "uv.lock is updated in the same PR with python-docx 1.2.0 and the matching specifier, so lock and pyproject agree.",
+    "All tests are behavioral or integration: no mocks or stubs; end-to-end tests build a real .docx in tmp_path and reopen it with python-docx, so they exercise the real dependency.",
+    "Identifier heuristic is covered by parametrized positives and negatives, including tricky near-misses (version numbers, dates, e.g./i.e., U.S., and/or, AH/AO, 1,000,000), plus an exact split_identifiers round trip.",
+    "Structural assertions go beyond text: w:shd ordering in pPr, one shaded paragraph per code block, list style names per nesting level, and numId restart across separated numbered lists.",
+    "The shared _FIXTURE doubles as a realistic changelog (empty Unreleased, template note, nested list, reference link definition), and the dropped-content test asserts both absence and presence of neighboring text.",
+    "Tests are deterministic and isolated (tmp_path only) and rely on python-docx>=1.2.0, which pyproject.toml pins, so paragraph.text includes hyperlink text as the heading test expects.",
+    "Clear separation of parse, inline, filter and render stages in short single-purpose functions; Optional/Union typing matches the project convention.",
+    "Numbered lists restart correctly: _number allocates a fresh w:num per list via the style's abstractNum, and _starts_list handles returns from nested levels without restarting the parent.",
+    "OOXML schema order is respected where it matters (w:shd added before spacing/indent, theme-font attributes cleared so Calibri/Aptos/Consolas actually apply).",
+    "Identifier heuristic is table-driven (IDENTIFIER_RULES, deny list, drop patterns) with an explicit 'tune here' section, and headings/link text are correctly skipped as the docstring states.",
+    "Empty Unreleased section removal plus rule collapsing keeps the output free of doubled separators.",
+    "Tests are behavioral end to end: they write Markdown, convert through convert_file/main, reopen the .docx with python-docx and assert heading styles, Consolas runs, list styles and numIds; no mocks anywhere.",
+    "The identifier heuristic is centralized in tunable tables (IDENTIFIER_RULES, IDENTIFIER_DENY, DROP_PARAGRAPH_PATTERNS) and backed by parametrized positive and negative cases, including tricky negatives like U.S., e.g., and/or and version numbers.",
+    "OOXML ordering is handled on purpose (w:shd added before spacing/ind, theme-font attributes including w:cstheme removed so explicit fonts win) and the shd ordering is pinned by a test.",
+    "Numbered lists restart via a fresh w:num with a startOverride on the list style's own abstractNum instead of hand-built numbering XML, with a restart test.",
+    "Dependency change is consistent: python-docx>=1.2.0 added to pyproject.toml and uv.lock in lockstep, with lxml locked as its transitive dependency.",
+    "Code follows the project conventions: typing Optional/Union/List spellings, short single-purpose functions, comment-free first-person-free docstrings."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Unanchored link-definition regex silently drops paragraphs that start with [Label]:",
+        "file": "conversion/changelog_docx.py",
+        "files": [
+          "conversion/changelog_docx.py",
+          "tests/test_changelog_docx.py"
+        ],
+        "lines": "161,164,204-208",
+        "reviewer": "overall, runtime",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "_LINK_DEF (line 164) is `^ {0,3}\\[([^\\]]+)\\]:\\s*(\\S+)` with no end anchor, and _text_line (lines 204-208) treats any match outside an open paragraph as a link definition. A changelog line such as `[BREAKING]: Removed the legacy export tool.` (or `[Note]: ...`) after a blank line is stored as links['breaking'] = 'Removed' and the whole sentence disappears from the Word document without warning. A real reference definition allows only a destination plus an optional quoted title before end of line, so the module docstring's 'link definitions' claim (line 14) is broader than what the code accepts, and the end-user document loses content.\n\nAlso (runtime): _HEADING ends in '\\s*#*\\s*$' (line 161), so the closing-hash group needs no preceding whitespace. A heading such as '### Fixed C#' or '## Release #' is captured as 'Fixed C' / 'Release'. The ATX closing sequence only counts when it follows whitespace.\n\nAlso (overall): _HEADING (line 161) uses `(.*?)\\s*#*\\s*$`, so a closing-# sequence needs no preceding space: `### C# tools` stays intact but `### Notes for C#` or `## Fixed issue #` lose the trailing `#` (rendered as `Notes for C`). Only a space-separated run of # closes an ATX heading.",
+        "fix": [
+          "Anchor the pattern to a full definition: `_LINK_DEF = re.compile(r\"^ {0,3}\\[([^\\]]+)\\]:\\s*(\\S+)(?:\\s+(?:\\\"[^\\\"]*\\\"|'[^']*'|\\([^)]*\\)))?\\s*$\")`, and add a parse_markdown test asserting `[BREAKING]: Removed X.` yields a Paragraph while `[1.2.0]: https://x/y` still yields a link.",
+          "Change the tail to '(?:\\s+#+)?\\s*$' so only a space-separated run of '#' is treated as a closing sequence.",
+          "Require whitespace before the closing sequence: `_HEADING = re.compile(r\"^ {0,3}(#{1,6})\\s+(.*?)(?:\\s+#+)?\\s*$\")`, and add a test_heading_mapping case `## C#` -> text `C#` alongside `## Title ##` -> `Title`."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Double-underscore bold consumes dunder identifiers before identifier detection runs",
+        "file": "conversion/changelog_docx.py",
+        "files": [
+          "conversion/changelog_docx.py",
+          "tests/test_changelog_docx.py"
+        ],
+        "lines": "305-313,359-367",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "In _spans (lines 359-367) the _INLINE emphasis alternatives run before _plain/split_identifiers, and the `__(?P<ubold>.+?)__` alternative (line 310) has none of the `(?<!\\w)`/`(?!\\w)` guards the single-underscore italic has (line 312). Plain text `scripts/fpm/__init__.py` (listed as an identifier positive at tests/test_changelog_docx.py:72) renders end to end as `scripts/fpm/` + bold `init` + `.py`: the underscores vanish and nothing is marked as code. Intraword cases such as `HAZ__AR__X` or `a__b__c` are bolded too, where the identifier rule would mark them as code. The positive test only exercises split_identifiers, so it passes while the rendered document is wrong.",
+        "fix": [
+          "Protect identifier tokens before emphasis parsing: in _spans, mask spans where _TOKEN/_trimmed yields a token for which is_identifier is true (outside backtick code), emit them as code spans, and run _INLINE only on the remaining text; add a parse_inline test for `The scripts/fpm/__init__.py file` expecting one code span `scripts/fpm/__init__.py`.",
+          "At minimum give ubold the same word guards as uital (`(?<![\\w/\\\\.])__(?P<ubold>[^\\s_](?:.*?[^\\s_])?)__(?![\\w.])`) and add parse_inline tests for `__init__.py` and `a__b__c`."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Module docstring says Heading 1-4 but code styles Heading 1-6",
+        "file": "conversion/changelog_docx.py",
+        "lines": "5,451-452",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The docstring (line 5) says headings use the built-in Heading 1-4 styles. _setup_document styles levels 1 to 6 (lines 451-452), mapping levels 5 and 6 onto the level-4 look, and _render_block uses 'Heading {block.level}' for all six. The behavior is sound; the description is stale.",
+        "fix": [
+          "Reword to 'Heading 1-6 styles (levels 5 and 6 share the level-4 look)'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Empty-section filter ignores sections holding only empty subheadings",
+        "file": "conversion/changelog_docx.py",
+        "lines": "17-18,380-388,395-404",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "The module docstring (lines 17-18) says release sections with no content are left out, and the _section_is_empty docstring (line 381) says a section is empty when no content precedes the next heading at its level or above. The loop returns False on the first block that is not a Rule (line 386), and a lower-level Heading is such a block. A Keep a Changelog style '## [Unreleased]' that carries empty '### Added' / '### Fixed' placeholders is therefore kept and rendered as a release with bare headings, contradicting both docstrings. The repository's current Unreleased section is truly empty, so today's input is unaffected.",
+        "fix": [
+          "In _section_is_empty, skip Heading blocks with level > the section level as well as Rules, and return False only on a non-Heading, non-Rule block; then have filter_blocks also drop the headings that sit inside a dropped section (track a 'skipping until next heading with level <= 2' flag).",
+          "Narrow both docstrings to say only an Unreleased section with no blocks at all is dropped."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "HTML comments are removed from fenced code blocks too",
+        "file": "conversion/changelog_docx.py",
+        "lines": "139-142,166,173",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The parser strips comments from the whole text before any block parsing (line 173), while the CodeBlock docstring says a fenced block is 'kept verbatim' (line 140). A code sample containing '<!-- ... -->' (an XML or HTML snippet in a changelog) silently loses that text.\n\nAlso (overall): CodeBlock's docstring (line 140) says fenced blocks are kept verbatim, but _Parser.__init__ (line 173) runs _COMMENT.sub over the whole source before block parsing, so an XML/HTML snippet in a fence (or a backticked `<!-- -->` in inline code) loses its comment text.",
+        "fix": [
+          "Strip comments per line outside fences, or after the fence check in _line, so fenced bodies are untouched.",
+          "Strip comments only outside fences: split the source on fence lines first (or track fence state line by line) and apply _COMMENT.sub to non-fence segments only.",
+          "Or narrow the CodeBlock docstring and the module Rules (line 14) to state that HTML comments are removed everywhere, including inside code."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Link text and unresolved bracket text are emitted without inline parsing",
+        "file": "conversion/changelog_docx.py",
+        "lines": "331-336,352-353",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "_token passes ltext straight into a Span (line 353) and _ref_link falls back to Span(m.group(0)) for an undefined reference (line 335). Markup inside the brackets is never parsed. '[`tool.py`](url)' shows literal backticks in plain link font, '[**New**](url)' shows literal asterisks, and an unresolved '[`x`]' or '[**x**]' keeps its raw markers. The module docstring promises inline code, bold and italic, and only says link text is not scanned for identifiers, which is narrower than not parsing it at all.",
+        "fix": [
+          "Parse link text with _spans(text, _Ctx(links, False, bold, italic)) and copy the url onto each resulting span; render unresolved bracket text through _spans as well, re-adding the literal brackets around it.",
+          "Document in the module docstring that link text is taken literally."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Numbered item can reuse a stale w:num from an earlier, unrelated list",
+        "file": "conversion/changelog_docx.py",
+        "files": [
+          "conversion/changelog_docx.py",
+          "tests/test_changelog_docx.py"
+        ],
+        "lines": "531-534,542-555,566-578",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "_number (lines 551-555) reuses state.nums[level] whenever _starts_list (lines 531-534) returns False, and _starts_list returns False for any prev.level > item.level. state.nums is never cleared when a list ends or when the list at a level switches to bullets. Input `1. a` / blank / `Text.` / blank / `- b` / `  - c` / `1. d` renders `d` on the numId created for `a`, so Word shows it as 2. instead of 1. The _RenderState docstring (line 544) says nums holds 'each open numbered level', which the code does not maintain.",
+        "fix": [
+          "Keep state.nums limited to open numbered levels: in _render_block clear state.nums for any non-ListItem block; in _render_item drop entries for levels deeper than item.level and drop nums[item.level] when the item is unordered. The existing `item.level not in state.nums` check then starts the list correctly; add a test with the input above asserting `d` gets a numId different from `a`."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Source read as plain utf-8 breaks on a BOM-prefixed changelog",
+        "file": "conversion/changelog_docx.py",
+        "lines": "606",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "convert_file reads the source with encoding='utf-8' (line 606). A file saved with a UTF-8 BOM, which Windows editors and PowerShell redirection commonly produce, keeps U+FEFF at the start of line 1. _HEADING requires '#' at column 0-3, so the title '# Changelog' fails to match and becomes a plain paragraph. _retitle then finds no level-1 heading, the --title override is silently ignored, and the document title property is empty.",
+        "fix": [
+          "Read with encoding='utf-8-sig' in convert_file."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Documented rules with no test: link text and headings are not scanned, --title, rule collapse",
+        "file": "tests/test_changelog_docx.py",
+        "files": [
+          "tests/test_changelog_docx.py",
+          "conversion/changelog_docx.py"
+        ],
+        "lines": "104-120,197-227",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The module docstring (conversion/changelog_docx.py:15-18) promises that headings and link text are not scanned for identifiers, that repeated rules collapse, and (main) that --title replaces the first # heading. No test covers the first two or the CLI flag. parse_inline(\"[config.json](https://x.org)\", {}) emitting a non-code span, a heading such as \"## ot_id\" staying plain, and a source with \"---\\n\\n---\" yielding one rule paragraph are all unasserted. The fixture exercises rule collapse but never asserts the rule count. test_cli_writes_docx never passes --title. A regression that scanned link text or headings would pass the whole suite.\n\nAlso (tests): _write (line 216) is called from test_code_block_is_one_shaded_paragraph at line 202 and defined 14 lines later, while the other helpers (_codes, _pr_children) sit directly above their first use. test_cli_writes_docx also repeats the write inline rather than using _write. Works at runtime but reads out of order.\n\nAlso (tests): Tests cover the common changelog shapes only. Not covered: numbered items nested under bullets (the nums dict keyed by level in _number), ~~~ fences, backslash escapes (the esc group), underscore emphasis, reference labels matched case-insensitively (links keyed by lower-case label), hyperlinks written to the .docx (relationship plus w:hyperlink; the heading test only checks text), and the identifier deny-list patterns (Ma?c[A-Z][a-z]+, only GitHub is exercised). The numbering-restart code is the most intricate logic in the module and is exercised for a single level.",
+        "fix": [
+          "Add parse_inline(\"[config.json](https://x.org)\", {}) asserting no span has code=True, and a parse_inline(\"ot_id\", {}, detect=False) case asserting no code span.",
+          "Add a filter_blocks or convert_file test with two adjacent rules asserting one rule paragraph (pBdr) remains.",
+          "Extend test_cli_writes_docx with --title and assert the Heading 1 text.",
+          "Move _write next to _pr_children above the first test that uses it and use it in test_cli_writes_docx.",
+          "Add a numbered-list-nested-in-bullets restart case, an assertion that the converted heading paragraph contains a w:hyperlink with an external relationship, and parametrized negatives for McDonald/MacBook-style names."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "test_paragraph_after_list_ends_list cannot detect the behavior it names",
+        "file": "tests/test_changelog_docx.py",
+        "files": [
+          "tests/test_changelog_docx.py",
+          "conversion/changelog_docx.py"
+        ],
+        "lines": "146-148",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The test asserts only [ListItem, Paragraph]. A paragraph after a blank line would parse as a Paragraph even if _end_list were never called, so the test passes without the list-state reset (the self.indents clearing in _Parser._text_line). The regression it should guard is a later list restarting at level 0 after intervening text, which is not asserted.",
+        "fix": [
+          "Extend the input with a second list after the paragraph and nested-indent history, e.g. \"- a\\n  - b\\n\\nText.\\n\\n  - c\\n\", and assert the final item's level so stale indents would show up."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Backtick assertion special-cases the code block with a string hack",
+        "file": "tests/test_changelog_docx.py",
+        "lines": "185-189",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_end_to_end_code_terms_carry_backticks selects Consolas runs, then filters out the fenced block's run with `\"python\" not in t` and `\"\\n\" not in t`. The exclusion is tied to the fixture's code-block text, so editing the fixture silently changes what is checked, and a real inline code run containing \"python\" would be skipped. Code-block runs use a different color (BLOCK_COLOR vs CODE_COLOR) and live in a shaded paragraph, so the two kinds can be separated structurally.",
+        "fix": [
+          "Select inline code runs by font color (C00000) via r.font.color.rgb, or skip paragraphs that have a w:shd in pPr, instead of matching on the text \"python\"."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 5 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"0003-help-link-swap\",\"commits_count\":2,\"first_sha\":\"bcaa31f04658ac68c3f36209ce0adaf371a78b01\",\"headRefName\":\"0004-changelog-docx\",\"headRefOid\":\"4594c0a4bf55a84af04a21619455817ef3c24945\",\"last_sha\":\"4594c0a4bf55a84af04a21619455817ef3c24945\",\"mergeCommit\":null,\"number\":5,\"state\":\"OPEN\",\"title\":\"Feature(changelog): `changelog_docx` Markdown to Word converter\",\"url\":\"https://github.com/t968rs/Production_Convert/pull/5\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0004-changelog-docx",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0004-changelog-docx",
+        "head_ref_name": "0004-changelog-docx",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "bcaa31f04658ac68c3f36209ce0adaf371a78b01",
+        "head_sha": "4594c0a4bf55a84af04a21619455817ef3c24945",
+        "base_ancestor_command": "git merge-base --is-ancestor bcaa31f04658ac68c3f36209ce0adaf371a78b01 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 4594c0a4bf55a84af04a21619455817ef3c24945 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "0003-help-link-swap",
+        "result": "OK (recorded; not the configured base main)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "4594c0a (working-tree snapshot; developer commits) - Module docstring now says Heading 1-6 styles, levels 5 and 6 sharing the level-4 look"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "4594c0a (working-tree snapshot; developer commits) - _section_is_empty skips deeper headings as well as rules; filter_blocks tracks a skipping flag per level-2 section and drops the empty subheadings of a dropped section; docstrings updated"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "4594c0a (working-tree snapshot; developer commits) - New _strip_comments removes HTML comments only outside fenced code blocks (a fence line inside an open comment is not treated as a fence); _Parser uses it; module docstring says comments outside fenced code are dropped"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "4594c0a (working-tree snapshot; developer commits) - Link text (inline and reference) is inline-parsed via new _linked with identifier scan off and the url copied onto every span; unresolved bracket text goes through _spans via new _bracketed with literal brackets kept"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "4594c0a (working-tree snapshot; developer commits) - convert_file reads the source with encoding='utf-8-sig' so a BOM no longer breaks the title heading"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "4594c0a (working-tree snapshot; developer commits) - _LINK_DEF anchored to a full definition (destination plus optional quoted/parenthesized title to end of line); _HEADING closing '#' run now requires preceding whitespace via lookbehind, so 'Notes for C#' keeps its '#' and '# ##' stays empty; Added test_label_line_is_paragraph_and_reference_definition_is_link (tests/test_changelog_docx.py) asserting '[BREAKING]: Removed X.' yields a Paragraph and '[1.2.0]: https://x/y' yields a link; added test_heading_closing_hashes_need_leading_space asserting '## Title ##' -> 'Title', '## C#' -> 'C#', '### Notes for C#' -> 'Notes for C#'. Module regex fixes in conversion/changelog_docx.py belong to the other part's fixer"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "4594c0a (working-tree snapshot; developer commits) - Inline code assertion now selects Consolas runs colored C00000 (CODE_COLOR) instead of excluding text containing 'python' or newlines; block runs use 1F1F1F and drop out structurally"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "4594c0a (working-tree snapshot; developer commits) - state.nums now tracks only open numbered levels: _render_block clears it for any non-ListItem block and new _close_levels drops deeper levels plus the item's own level when it is a bullet; added test_numbered_list_after_text_and_bullets_restarts for the reported input"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "4594c0a (working-tree snapshot; developer commits) - added tests for link text and heading text not scanned, repeated-rule collapse (one pBdr paragraph), --title on the CLI, heading w:hyperlink with an external relationship, numbered list nested in bullets restarting, and McDonald/MacBook/MacArthur negatives; moved _write above its first use and reused it in test_cli_writes_docx; conversion/changelog_docx.py: behavior already matches the documented rules, no edit needed"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "4594c0a (working-tree snapshot; developer commits) - test_paragraph_after_list_ends_list now parses a nested list, a paragraph and a later indented item, asserting the final item sits at level 0 so stale indents would fail it; conversion/changelog_docx.py: list reset in _Parser._text_line is correct, no edit needed"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "4594c0a (working-tree snapshot; developer commits) - ubold alternative in _INLINE gets word guards ((?<![\\w/\\\\.])__ ... __(?![\\w.])) so dunder and intraword double underscores fall through to identifier detection; added parse_inline tests for scripts/fpm/__init__.py, __init__.py, a__b__c and a positive __bold__ case"
+    }
+  ]
+}
