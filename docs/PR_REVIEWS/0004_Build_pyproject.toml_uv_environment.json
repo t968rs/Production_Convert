@@ -1,0 +1,437 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.2.0",
+  "pr": 4,
+  "pr_title": "Build: `pyproject.toml` uv environment",
+  "branch": "0002-python-env",
+  "base_branch": "main",
+  "base_sha": "33fe6c33873c195d4ac6e62a8bce31bd73ee5dae",
+  "head_sha": "932b3abea739633c6144d6a218c85136fcf004d5",
+  "review_date": "2026-11-10",
+  "verdict": "READY TO MERGE - 11 of 12 findings resolved, 1 bubbled",
+  "stats": {
+    "additions": 4985,
+    "deletions": 189,
+    "files_changed": 28,
+    "source": {
+      "additions": 4166,
+      "deletions": 41,
+      "files_changed": 24
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0004/pr4_20261110T191601Z/findings/config.json",
+    "docs/_scratch/pr_review/0004/pr4_20261110T191601Z/findings/tests.json",
+    "docs/_scratch/pr_review/0004/pr4_20261110T191601Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0004/pr4_20261110T191601Z/findings/docs.json",
+    "docs/_scratch/pr_review/0004/pr4_20261110T191601Z/findings/overall.json",
+    "docs/_scratch/pr_review/0004/pr4_20261110T191601Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0004/pr4_20261110T191601Z/findings/roast.json"
+  ],
+  "bubbles": [
+    "M3"
+  ],
+  "strengths": [
+    "python-docx>=1.2.0 is declared in pyproject.toml and matches the imports in conversion/changelog_docx.py and tests/test_changelog_docx.py; uv.lock records the same specifier (>=1.2.0), so the lock and manifest agree.",
+    "testpaths = [\"tests\"] matches its comment: the only other test-named files are the plan copies under docs/PLANS/0001/tests/, which it keeps out of collection.",
+    "Dependency list stays alphabetically ordered and the new [tool.pytest.ini_options] table sits with the other tool tables, in line with the file's conventions.",
+    "The shared isolate_git fixture (tests/conftest.py) and tests/_git.py replace per-module copies; test_prod_deploy_tracked.py also gains the fixed commit identity it lacked.",
+    "test_help_links.py checks the swap through real zip archives: BOM preservation for each encoding, case-insensitive prefix and tail matching, unchanged member order, compression and timestamps, and no temp file left after every refusal.",
+    "The end-to-end tests run ProdCopier through load_project with the real fpm.json, and check that the source archive bytes stay unchanged and that dry runs leave dest_root unwritten.",
+    "Fault injection (patched ZipFile.testzip, a swap_atbx_links that raises) checks observable results (errors, patched set, archive bytes), not call wiring.",
+    "test_changelog_docx.py pairs tables of positive and negative identifier cases with checks on the saved .docx structure (numId restarts, pPr child order, external hyperlink relationships).",
+    "pyproject testpaths keeps the plan copies under docs/ out of collection.",
+    "help_links rewrites all or nothing: _write_archive goes through a temp archive next to the original, checks it with testzip and re-decodes the changed members, then os.replace swaps it in; any failure leaves the original archive untouched and removes the temp file.",
+    "_decode/_Text keep each member's byte-order mark and encoding (UTF-8, UTF-16 LE/BE) on re-encode, so rewritten .content/.rc/.xml members keep their original form.",
+    "_TAIL stops at quote, backslash, '&', '#', '?' and whitespace, so hrefs inside JSON-escaped and HTML-entity-escaped help text are cut at the right place, and fragments are not checked as part of the path.",
+    "prod_deploy keeps the help-link step independent: LinkSwap.for_paths ValueError (relative path), per-archive scan exceptions and write failures all become CopyResult errors instead of aborting the run, and a dry run scans the source archive without writing.",
+    "The _copy_folder is_dir guard fixes a FileNotFoundError crash on an absent optional folder (required ones are already checked by validate_source), and tests/test_fpm_json_help_pages.py covers it.",
+    "changelog_docx numbering is correct: each List Number style in the default template has its own abstractNum at level 0, so _new_num's level-0 startOverride restarts every list; _shade's ordering comment matches python-docx's successor-aware insertion of w:ind/w:spacing; the theme-font attribute name w:cstheme is spelled correctly.",
+    "filter_blocks and _section_is_empty match their docstrings: an empty level-2 release section is dropped together with its empty subheadings, and repeated rules collapse into one.",
+    "Every decision (D1-D4) lists the rejected options with file:line evidence and the developer's acceptance, and the head code honours each chosen option: _target_error (conversion/help_links.py:167-173), _swap_archive patched rule (conversion/prod_deploy.py:499), absent optional folder skip (conversion/prod_deploy.py:384-385), fpm.env example lines (project_definitions/fpm.env:6-7).",
+    "The rendered PIP agrees with the JSON source on decisions, values, sweeps and task steps; the header states it is generated and must not be hand-edited.",
+    "Values capture probed facts (live archive members, BOMs, as_uri encoding, fnmatch '*' crossing '/') with dated sources, and the shipped-set departure from the spec (review R7) is called out explicitly.",
+    "The fpm.json tool_metadata entry (project_definitions/fpm.json:26) and the prod_deploy module docstring (conversion/prod_deploy.py:7,17-21) match the plan's TASK-2 and TASK-4 text verbatim.",
+    "help_links.py writes all or nothing: changed members go to a temp archive beside the original, which is reopened, CRC-tested and decode-checked before os.replace, and any failure leaves the original bytes and no temp file (covered by the read-only and failed-validation tests).",
+    "The shipped set is built from ProdCopier's copied list, so a link to a denied, untracked or stale-in-dest page is a missing target; tests cover each case end to end through load_project and the real fpm.json.",
+    "Implementation matches the frozen plan's decisions D1-D4 (foreign file: hrefs and non-UNC target only when swap_count > 0, patched-dest dry-run reporting, commented HELP_ROOT example, absent optional folder skipped).",
+    "Git test helpers moved to tests/_git.py and a conftest isolate_git fixture, removing duplicated fixtures and giving test_prod_deploy_tracked.py the fixed commit identity it lacked.",
+    "uv.lock agrees with pyproject.toml: python-docx 1.2.0 with lxml and typing-extensions added, resolved inside the 7-day exclude-newer window.",
+    "changelog_docx tests are behavioral: they parse real Markdown and inspect the python-docx output (styles, numbering restarts, hyperlink relationships, shading order).",
+    "Plan decisions trace cleanly into code: D1's non-UNC error fires only when swap_count > 0 (conversion/help_links.py:167-173), D2's patched-dest rule is conversion/prod_deploy.py:499, D4's skip-absent is conversion/prod_deploy.py:384-385.",
+    "Module docstrings of conversion/prod_deploy.py and conversion/help_links.py state the swap, dry-run and all-or-nothing rules exactly as the code implements them.",
+    "tests/_git.py and the isolate_git fixture in tests/conftest.py replace three copies of the git helper and also give test_prod_deploy_tracked.py the fixed commit identity it previously lacked.",
+    "uv.lock matches pyproject.toml: python-docx 1.2.0 with lxml and typing-extensions resolved under the existing 7-day cooldown.",
+    "pytest testpaths keeps the plan's test copies under docs/ out of collection, with the reason stated in pyproject.toml:25.",
+    "Help-link tests are behavioral against real zip archives and real git repos; the only monkeypatches are fault injections (testzip, swap_atbx_links raising), not mock-chain wiring.",
+    "help_links rewrites all or nothing: the archive is built in a temp file beside the original, checked with testzip and a decode of every changed member, then os.replace. Tests cover the read-only and failed-validation paths, and both leave no temp file.",
+    "Targets are checked against the set of files this run actually copied, not the files on disk, so a stale page in dest_root or a denied _fragments source cannot satisfy a link. Both cases have end-to-end tests in real and dry mode.",
+    "The dry run scans the source archive read-only and reports would-be swaps through patched without inventing a new CopyResult field, so run.py and test_run_exit_code stay untouched.",
+    "The D4 fix (skip an absent required:false folder) closes a real FileNotFoundError crash, with a test for both real and dry runs.",
+    "The git test helpers moved into tests/_git.py and the isolate_git fixture. The tracked-only tests now get the fixed commit identity they lacked, so they no longer depend on the machine's git config.",
+    "Unscanned members (png, py, link) are carried as raw bytes and BOMs round-trip. The tests compare whole members byte for byte, not just the substring.",
+    "The plan records each decision (D1-D4) with the options it rejected and the probe evidence (live archive layout, as_uri behavior, fnmatch crossing '/'), so a later reader can see why the code acts as it does."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Stale Pipfile re-enters main beside the uv environment",
+        "file": "Pipfile",
+        "files": [
+          "Pipfile",
+          "pyproject.toml",
+          "uv.lock",
+          "conversion/changelog_docx.py"
+        ],
+        "lines": "1-16",
+        "reviewer": "overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The merge base has pyproject.toml, uv.lock and .python-version and no Pipfile; the PR head adds Pipfile back (branch commits 8b00217/3de9eb1 never deleted it). Merging puts a second dependency manifest on main that already disagrees with the uv one: python_version = \"3.13\" against the 3.14 pin in .python-version, pytest listed as a runtime package as well as a dev package, and no python-docx, so a pipenv environment built from it cannot import conversion.changelog_docx. The PR's own summary states the opposite (\"Pipfile | D | Deleted; its packages ... move to pyproject.toml\"), so the file is a leftover duplicate of pyproject.toml.\n\nAlso (system_shape): At the PR head, Pipfile (new relative to the merge base) still defines a second environment manifest: python_version = \"3.13\" (Pipfile:16) against .python-version 3.14 and the ruff comment at pyproject.toml:29; no python-docx, so conversion/changelog_docx.py:29 (`import docx`) fails in a pipenv environment; and pytest listed as a runtime package (Pipfile:10) while pyproject.toml:14-17 keeps it in the dev group. The PR body states the opposite (\"Replaces the Pipfile ... Pipfile | D | Deleted\"), and branch history shows Pipfile was added (8b00217) and modified (3de9eb1) but never removed. Two divergent manifests mean the environment depends on which tool a developer reaches for.\n\nAlso (roast): Main deleted the Pipfile when PR #2 moved the project to uv (33fe6c3, 'migrate from pipenv to uv'). This branch replays the old pipenv commits (8b00217, 3de9eb1, copies of e23a68a/4a63892), so the head adds a 16-line Pipfile again. It contradicts the real manifest. It pins python_version 3.13, while .python-version and the pyproject ruff comment say 3.14. It lacks python-docx, which conversion/changelog_docx.py imports at module level. It lists pytest under both [packages] and [dev-packages]. Anyone who runs `pipenv install` from it gets an environment where `python -m conversion.changelog_docx` and tests/test_changelog_docx.py fail on import. The PR's own description lists Pipfile as 'D Deleted', so the merged tree does the opposite of what the PR claims. Two manifests for one project is one too many.",
+        "fix": [
+          "Delete Pipfile from the branch (git rm Pipfile) so pyproject.toml and uv.lock stay the only dependency source, as the PR summary describes.",
+          "Delete Pipfile (`git rm Pipfile`): pyproject.toml plus uv.lock already carry every dependency it lists, so it is a stale duplicate manifest.",
+          "If pipenv support is intentionally kept, bring Pipfile in line with pyproject.toml: python_version = \"3.14\", add python-docx = \">=1.2.0\", move pytest to [dev-packages] only, and correct the PR body's 'Deleted' row.",
+          "Delete Pipfile from the branch (git rm Pipfile) so pyproject.toml plus uv.lock stay the only dependency manifest, as main already has it."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "fpm.env comment test fails when a developer sets HELP_ROOT as the file instructs",
+        "file": "tests/test_prod_deploy_help_root.py",
+        "files": [
+          "tests/test_prod_deploy_help_root.py",
+          "project_definitions/fpm.env"
+        ],
+        "lines": "50-56",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_fpm_env_shows_help_root_as_a_comment asserts on the live project_definitions/fpm.env: exactly one '# HELP_ROOT=//' line and no parsed HELP_ROOT key. That file is developer-local configuration (its line 2 says 'Do not commit this file') and its line 6 says HELP_ROOT is 'Required once the archive holds help links'. A developer who follows that instruction and uncomments or adds HELP_ROOT breaks the suite, though nothing in the code is wrong. The test locks a local setting in place instead of checking behavior.",
+        "fix": [
+          "Move the documented example into a tracked template (for example project_definitions/fpm.env.example) and point the test at that template instead of the live fpm.env.",
+          "Drop the test; the parsing behavior it touches is already covered by test_help_root_absent_is_none and test_help_root_gets_the_release_folder, which use tmp_path env files."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Inline links with a title or a parenthesized URL render as raw Markdown",
+        "file": "conversion/changelog_docx.py",
+        "lines": "331-335",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "The module docstring lists inline links as covered Markdown (changelog_docx.py:12-14). The inline-link alternative in _INLINE, \\[(?P<ltext>[^\\]]+)\\]\\((?P<lurl>[^)\\s]+)\\) at line 334, rejects a destination that contains whitespace or ')'. So [text](url \"title\") and URLs with parentheses fail that alternative and fall to the reference alternative. The reference does not resolve, so _bracketed writes a literal [text], and (url \"title\") follows as plain text with identifier detection applied. The Word document then shows the raw Markdown and no hyperlink.",
+        "fix": [
+          "Extend the lurl group to accept an optional title, e.g. \\((?P<lurl>[^)\\s]+)(?:\\s+(?:\"[^\"]*\"|'[^']*'))?\\), and drop the title.",
+          "Or narrow the docstring: inline links without a title and without ')' in the URL."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Code spans inside link text lose their visible backticks",
+        "file": "conversion/changelog_docx.py",
+        "lines": "520-537",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "add_spans says code spans get visible backticks (changelog_docx.py:531), and the module docstring promises code-like terms in Consolas wrapped in visible backticks (lines 3-5). A span can be both code and a link: _linked inline-parses link text, so [`fpm`](url) yields Span(code=True, url=url). add_spans sends every span with a url to _add_hyperlink, which adds span.text without the backticks. _format_run then gives the run Consolas and replaces the dark red with LINK_COLOR. The term renders as blue Consolas with no backticks, which contradicts both docstrings.\n\nAlso (overall): add_spans documents \"code spans get visible backticks, links become hyperlinks\", but a span that is both code and linked (Markdown [`config.json`](url): _linked keeps code=True from the inline code token) takes the url branch to _add_hyperlink, which writes span.text without backticks while _format_run still applies the Consolas code font. The rendered text then differs from every other code term in the document.",
+        "fix": [
+          "In _add_hyperlink, build the run text the same way as the non-link path: paragraph.add_run(f\"`{span.text}`\" if span.code else span.text).",
+          "Or qualify the add_spans docstring and the module docstring: code spans inside link text render as link-colored Consolas without backticks.",
+          "In _add_hyperlink, write f\"`{span.text}`\" when span.code is set, matching the non-link branch of add_spans.",
+          "Or narrow the add_spans docstring to say code spans inside links keep the code font without backticks."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "PR description still describes PR #2",
+        "file": "conversion/prod_deploy.py",
+        "files": [
+          "conversion/prod_deploy.py",
+          "conversion/help_links.py",
+          "conversion/changelog_docx.py",
+          "pyproject.toml",
+          "project_definitions/fpm.json",
+          "project_definitions/fpm.env"
+        ],
+        "lines": "17-21",
+        "reviewer": "roast, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The PR #4 body is the PR #2 summary: 6 files, +605/-15, 'Replaces the Pipfile', Pipfile marked deleted. The merged change is 27 paths (+4969). It adds the .atbx help-link swap (conversion/help_links.py, the ProdCopier hook, HELP_ROOT in ProjectPaths and fpm.env, the tool_metadata folder in fpm.json), the changelog_docx converter with its python-docx/lxml lock entries, pytest testpaths, the shared tests/_git.py helper and isolate_git fixture, and the plan documents. None of that appears in the description. A reader of the merge commit learns about a pipenv migration that already landed on main.\n\nAlso (overall, system_shape): The PR body still describes the 6-file Python-environment change (Pipfile deleted, pyproject.toml/.python-version/uv.lock added). The head also carries the .atbx help-link swap (conversion/help_links.py, the ProdCopier hook, HELP_ROOT in ProjectPaths and fpm.env, the tool_metadata folder in fpm.json), the CHANGELOG.md to .docx converter with its python-docx runtime dependency, the pytest testpaths setting, the shared tests/_git.py helper and the plan documents under docs/PLANS. A reader of the merged history gets none of that from the description.\n\nAlso (system_shape): The PR body is headed '# PR #2', says 'Files Changed: 6', lists pyproject.toml and uv.lock as added (both are modified relative to the merge base 33fe6c3), and covers only the uv/ruff setup. The branch now also lands the .atbx help-link swap (conversion/help_links.py, conversion/prod_deploy.py, ProjectPaths.help_root, fpm.json tool_metadata folder, fpm.env HELP_ROOT example), the changelog_docx converter with its python-docx dependency, pytest testpaths, the shared tests/_git.py helper and isolate_git fixture, and the docs/PLANS/0001 plan record. The commit message of 932b3ab describes these; the PR body does not.",
+        "fix": [
+          "Regenerate the PR #4 description from the actual diff (merge base 33fe6c3 to 932b3ab): summarize the help-link swap, the changelog_docx converter, the test-helper consolidation and the plan docs, and drop the Pipfile-deleted row (or keep it only once the Pipfile is actually removed).",
+          "Update the PR title/body to list the help-link swap, the changelog_docx converter and python-docx dependency, the testpaths setting and the test helper refactor, and correct the Pipfile row once Pipfile is actually deleted.",
+          "Regenerate the PR #4 body from the current diff against the merge base, listing the help-link swap, changelog_docx, plan documents and test refactor, and correcting the A/M codes for pyproject.toml and uv.lock."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "A failed swap leaves a shippable-looking release folder behind",
+        "file": "conversion/prod_deploy.py",
+        "files": [
+          "conversion/prod_deploy.py",
+          "conversion/run.py",
+          "tests/test_prod_deploy_help_links.py",
+          "project_definitions/fpm.env"
+        ],
+        "lines": "454-499",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "When _swap_help_links reports errors (missing target, foreign href, or the non-UNC target error every run hits while fpm.env has a local DEST_ROOT and no HELP_ROOT), ProdCopier.run has already copied everything and patched _debug_override. dest_root/FPM_<version> then holds a complete release whose .atbx still points its help at file:///E:/automation/toolboxes/floodplain_development/... tests/test_prod_deploy_help_links.py:107-114 confirms this behavior. run.py exits 1 and lists the errors, but nothing in the folder marks it as bad. Someone who copies prod_results to the share by hand ships development links. The exit code is the only safeguard.",
+        "fix": [
+          "On a help-link error in a real run, mark the release as unusable: delete or rename the unswapped dest .atbx (e.g. <name>.atbx.UNSWAPPED), and adjust test_run_reports_a_missing_target_and_keeps_the_copy to match.",
+          "Or keep the copy and have conversion/run.py print, on failure, that dest_root is not shippable, naming the archive; document that in the prod_deploy module docstring."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Plan test copies no longer match the live tests the plan copies them over",
+        "file": "docs/PLANS/0001/tests/tests/test_prod_deploy_help_links.py",
+        "files": [
+          "docs/PLANS/0001/tests/tests/test_prod_deploy_help_links.py",
+          "docs/PLANS/0001/tests/tests/test_fpm_json_help_pages.py",
+          "docs/PLANS/0001_Help_link_swap_PIP.md",
+          "docs/PLANS/0001/tests/tests/test_help_links.py",
+          "docs/PLANS/0001/tests/tests/test_prod_deploy_help_root.py",
+          "pyproject.toml",
+          "docs/PLANS/0001_Help_link_swap_ActionPlan.json",
+          "tests/test_help_links.py"
+        ],
+        "lines": "1-50",
+        "reviewer": "tests, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "docs/PLANS/0001_Help_link_swap_PIP.md (lines 81, 120, 152, 226) says to copy each docs/PLANS/0001/tests/tests/*.py file over tests/*.py. Two of those copies are now stale. The plan copy of test_prod_deploy_help_links.py has no `os.name != 'nt'` skip and defines its own autouse _isolate_git fixture and _git helper. The plan copy of test_fpm_json_help_pages.py also redefines the helpers instead of importing tests._git and using isolate_git. Running the plan step again would undo this PR's consolidation and drop the Windows skip on the UNC end-to-end tests. pytest does not collect these copies (testpaths), so they are duplicates that can only cause a regression.\n\nAlso (overall): docs/PLANS/0001/tests/tests/ holds four test modules that duplicate tests/ (pytest no longer collects them via testpaths). Two already differ: the plan copies of test_prod_deploy_help_links.py and test_fpm_json_help_pages.py inline their own _git/_isolate_git helpers instead of tests/_git.py and conftest.isolate_git, and the help-links copy lacks the os.name != \"nt\" skip, so running it directly on a non-Windows host fails on the UNC paths. Nothing marks them as frozen snapshots, so a reader can take them for live tests.\n\nAlso (system_shape): The plan's steps say 'Copy docs/PLANS/0001/tests/tests/<file> to tests/<file>' (PIP TASK-2 step 1, TASK-4 step 1), but two copies no longer match: docs/PLANS/0001/tests/tests/test_prod_deploy_help_links.py keeps its own _isolate_git fixture and _git helper and lacks the os.name != 'nt' skip that tests/test_prod_deploy_help_links.py:16-20 has; docs/PLANS/0001/tests/tests/test_fpm_json_help_pages.py likewise keeps the removed local helpers. Separately, tests/test_help_links.py:284-299 holds test_link_already_at_the_release_prefix_is_checked and test_shipped_link_already_at_the_release_prefix_is_ok, which the PIP TASK-3 checklist (docs/PLANS/0001_Help_link_swap_PIP.md:165-189) and its '25 test node(s)' evidence do not list. A reader replaying the plan gets a different test tree than the one merged.\n\nAlso (roast): docs/PLANS/0001/tests/tests/ holds four test modules (about 750 lines) that the now-COMPLETE plan says to copy into tests/. Two are byte-identical to tests/ (test_help_links.py, test_prod_deploy_help_root.py). The other two have already drifted. The docs copies of test_prod_deploy_help_links.py and test_fpm_json_help_pages.py still define their own _GIT_IDENTITY, autouse _isolate_git and _git helpers, and lack the Windows skip that tests/ added. The pyproject testpaths entry exists mainly to keep pytest from collecting them. They are a duplicate of code under tests/ that nothing runs, so the next fix lands in one copy only. Dead tests are the most optimistic tests.",
+        "fix": [
+          "Delete docs/PLANS/0001/tests/tests/ (duplicates of tests/) and mark the plan's copy steps as done.",
+          "Refresh the two stale copies from tests/test_prod_deploy_help_links.py and tests/test_fpm_json_help_pages.py.",
+          "Delete docs/PLANS/0001/tests/tests/ now that the plan is complete and the tests live in tests/.",
+          "Or keep them as plan artifacts and add a short note in docs/PLANS/0001_Help_link_swap_PIP.md (via the plan driver) that they are the frozen red-phase copies and tests/ holds the maintained versions.",
+          "Refresh docs/PLANS/0001/tests/tests/test_prod_deploy_help_links.py and test_fpm_json_help_pages.py from tests/, and add the two release-prefix tests to TASK-3's test list in the ActionPlan JSON, then re-render the PIP.",
+          "Alternatively add a note to the PIP (via the JSON driver) that the copies are the red-phase snapshots and tests/ is authoritative after the review fixes.",
+          "Delete docs/PLANS/0001/tests/ now that every task is recorded COMPLETE; the plan JSON and PIP keep the history and the tests live in tests/.",
+          "Or keep them as frozen red-phase snapshots: say so in the PIP and the ActionPlan notes, so nobody mistakes them for maintained code."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Plan provenance names commits that are not in the PR head's history",
+        "file": "docs/PLANS/0001_Help_link_swap_ActionPlan.json",
+        "files": [
+          "docs/PLANS/0001_Help_link_swap_ActionPlan.json",
+          "docs/PLANS/0001_Help_link_swap_PIP.md"
+        ],
+        "lines": "7-8,55,324,632-638",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "The plan records branch 0003-help-link-swap -> 0002-python-env (ActionPlan.json:7-8, PIP:7), a freeze at cc0c2d2 (ActionPlan.json:632-638, PIP:9), a post-record change in commit 4e7bb22 (ActionPlan.json:324) and a provenance note that base 33fe6c3 is not an ancestor and the tree matches db07002 (ActionPlan.json:55). At the PR head 932b3ab, #3 landed as one squash commit: git merge-base --is-ancestor cc0c2d2 932b3ab fails, and cc0c2d2, 4e7bb22 and db07002 are reachable only from the local branches 0003-help-link-swap and 0004-changelog-docx, while 33fe6c3 is now an ancestor. Once this PR merges to main and those branches go, the freeze commit and the note's commit references dangle and the base-ancestry note reads as false.",
+        "fix": [
+          "Add a note through the driver recording that #3 was squash-merged as 932b3ab on 0002-python-env (mapping cc0c2d2 / 4e7bb22 to it), then re-render the PIP.",
+          "Keep the frozen commit reachable with a tag (for example plan-0001-frozen on cc0c2d2) before 0003-help-link-swap is deleted."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "TASK-3 sealed test list omits the tests for the 'already present' target check its step 5 now claims",
+        "file": "docs/PLANS/0001_Help_link_swap_PIP.md",
+        "files": [
+          "docs/PLANS/0001_Help_link_swap_PIP.md",
+          "docs/PLANS/0001_Help_link_swap_ActionPlan.json",
+          "tests/test_help_links.py"
+        ],
+        "lines": "159,165-197",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "TASK-3 step 5 (PIP line 159, ActionPlan.json action) says every file: href under new_prefix, swapped or already present, is checked against shipped, and the code does this (conversion/help_links.py:146-148,248). The task's test list and Evidence (PIP lines 165-197: 25 nodes, sealed at tree 9e038a5) predate that change and omit tests/test_help_links.py::test_link_already_at_the_release_prefix_is_checked (:284) and ::test_shipped_link_already_at_the_release_prefix_is_ok (:294). The only caveat lives in the JSON item's notes (ActionPlan.json:324), which the rendered PIP does not show, so a reader of the PIP sees a completed task whose recorded tests do not cover one of its stated behaviors.",
+        "fix": [
+          "Re-record TASK-3 through the driver (plan.py record 0001 TASK-3 --sha <sha> or --staged) so the sealed node list holds all 27 tests, then run plan.py render to regenerate the PIP.",
+          "Have plan.py render emit each item's notes under the task, so the post-record caveat at ActionPlan.json:324 reaches the PIP."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "fpm.env says 'Do not commit this file' while the PR commits a change to it",
+        "file": "project_definitions/fpm.env",
+        "files": [
+          "project_definitions/fpm.env",
+          "tests/test_prod_deploy_help_root.py",
+          "docs/PLANS/0001_Help_link_swap_PIP.md"
+        ],
+        "lines": "2,6-7",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "project_definitions/fpm.env:2 reads '# Do not commit this file.', yet the file is tracked and this PR adds lines 6-7 (the HELP_ROOT purpose comment and commented example), and tests/test_prod_deploy_help_root.py:50-56 now asserts on its tracked content. Plan decision D3 records the choice to keep it tracked, so the header comment is the stale part: the file's own rule contradicts the PR's diff and the test that depends on it.",
+        "fix": [
+          "Reword fpm.env:2 to state what the tracked file is for (for example '# Tracked defaults; set HELP_ROOT locally before a release run.').",
+          "Or follow D3's rejected `untrack` option: ship fpm.env.example with the HELP_ROOT example, ignore project_definitions/*.env, and point test_fpm_env_shows_help_root_as_a_comment at the example file."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "isolate_git docstring claims independence from env overrides it does not clear",
+        "file": "tests/conftest.py",
+        "files": [
+          "tests/conftest.py",
+          "tests/_git.py"
+        ],
+        "lines": "11-16",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The shared fixture's docstring says git discovery stays 'independent of any enclosing repo or env overrides', but it only unsets GIT_DIR and GIT_WORK_TREE. Other variables such as GIT_INDEX_FILE (which git sets while hooks run), GIT_OBJECT_DIRECTORY, GIT_COMMON_DIR and GIT_CONFIG_GLOBAL still pass through. If pytest runs from a git hook, `git add` in a tmp repo can write to the outer repository's index. Now that this fixture is shared, the gap affects every module that uses it.",
+        "fix": [
+          "Also delenv GIT_INDEX_FILE, GIT_OBJECT_DIRECTORY, GIT_ALTERNATE_OBJECT_DIRECTORIES and GIT_COMMON_DIR (raising=False) in isolate_git.",
+          "Narrow the docstring to what the fixture clears: 'Keep git discovery inside tmp_path and drop GIT_DIR/GIT_WORK_TREE overrides.'"
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Per-test Windows skip duplicates the module-level skip",
+        "file": "tests/test_help_links.py",
+        "lines": "351",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "tests/test_help_links.py already sets a module-wide pytestmark that skips when os.name != 'nt' (line 16). The skipif on test_read_only_archive_leaves_no_temp_file (line 351) uses the same condition, so it can never be the reason the test skips. Its reason text, which explains why the test is Windows-only, never appears in the output.",
+        "fix": [
+          "Remove the decorator at line 351 and move its reason into a comment or the test docstring."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M3",
+      "classification": "out_of_scope",
+      "reason": "Every fix rewrites the PR #4 body on GitHub, which the developer owns. Source text: docs/PR_SUMMARIES/0004_Build_swap_atbx_links_help_link_swap.md"
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 4 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":7,\"first_sha\":\"8b002172af2d19c984638bec28a871d679b997ca\",\"headRefName\":\"0002-python-env\",\"headRefOid\":\"932b3abea739633c6144d6a218c85136fcf004d5\",\"last_sha\":\"932b3abea739633c6144d6a218c85136fcf004d5\",\"mergeCommit\":null,\"number\":4,\"state\":\"OPEN\",\"title\":\"Build: `pyproject.toml` uv environment\",\"url\":\"https://github.com/t968rs/Production_Convert/pull/4\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0002-python-env",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0002-python-env",
+        "head_ref_name": "0002-python-env",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "8b002172af2d19c984638bec28a871d679b997ca",
+        "head_sha": "932b3abea739633c6144d6a218c85136fcf004d5",
+        "base_ancestor_command": "git merge-base --is-ancestor 8b002172af2d19c984638bec28a871d679b997ca HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 932b3abea739633c6144d6a218c85136fcf004d5 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "932b3ab (working-tree snapshot; developer commits) - run.py now prints on failure that dest_root is NOT SHIPPABLE and names each top-level .atbx left unswapped (_report_unshippable); prod_deploy module docstring documents the kept-but-unshippable folder; copy behavior unchanged, so tests/test_prod_deploy_help_links.py needs no edit (its keeps-the-copy test still holds); fpm.env: cited, no edit for this issue"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "932b3ab (working-tree snapshot; developer commits) - fpm.env:2 reworded to 'Tracked defaults; set HELP_ROOT locally before a release run (documented example: fpm.env.example).'; test repointed at the tracked template (see I2); PIP part needs no edit: its D3 question quotes fpm.env line 2 as it stood when the decision was taken (digest-covered plan history); the stale header lives in project_definitions/fpm.env, owned by the other part"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "932b3ab (working-tree snapshot; developer commits) - Moved the HELP_ROOT purpose comment and commented example from fpm.env into new tracked project_definitions/fpm.env.example; test renamed test_fpm_env_example_shows_help_root_as_a_comment and reads the template, so a local HELP_ROOT in fpm.env no longer breaks the suite"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "932b3ab (working-tree snapshot; developer commits) - Through plan_api and plan.py: TASK-1 provenance note now records that #3 landed as squash commit 932b3ab (33fe6c3 an ancestor; db07002, cc0c2d2 and 4e7bb22 map to it), TASK-3 note maps 4e7bb22 to 932b3ab, and freeze --refreeze moved the freeze record from cc0c2d2 to 932b3ab; PIP re-rendered (Frozen at 932b3ab), plan.py check ok"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "932b3ab (working-tree snapshot; developer commits) - TASK-3 planned tests gain test_link_already_at_the_release_prefix_is_checked and test_shipped_link_already_at_the_release_prefix_is_ok; TASK-3 re-recorded with plan.py record --sha 932b3ab (27 nodes passed) and the PIP re-rendered; tests/test_help_links.py: already holds both tests (:284, :294), no edit for M7"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "932b3ab (working-tree snapshot; developer commits) - Removed the duplicate skipif on test_read_only_archive_leaves_no_temp_file; its Windows-only reason moved into the test docstring"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "932b3ab (working-tree snapshot; developer commits) - _INLINE inline-link alternative now accepts one level of balanced parentheses in the URL and an optional quoted title (dropped), so [text](url \"title\") and URLs with parens render as hyperlinks"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "932b3ab (working-tree snapshot; developer commits) - _add_hyperlink writes backtick-wrapped text for code spans, matching the non-link branch of add_spans"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "932b3ab (working-tree snapshot; developer commits) - Deleted the stale duplicate Pipfile from the working tree (not staged); pyproject.toml and uv.lock remain the only manifest; pyproject.toml, uv.lock: already carry every dependency, no edit; conversion/changelog_docx.py: cited for its docx import, no edit for I1"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "932b3ab (working-tree snapshot; developer commits) - isolate_git now also delenv GIT_INDEX_FILE, GIT_OBJECT_DIRECTORY, GIT_ALTERNATE_OBJECT_DIRECTORIES and GIT_COMMON_DIR (raising=False) so git hook env cannot redirect writes to the outer repo; tests/_git.py needs no edit"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "932b3ab (working-tree snapshot; developer commits) - Refreshed all four plan test copies under docs/PLANS/0001/tests/tests/ byte-for-byte from tests/ (help_links copy now has the os.name != 'nt' skip, tests._git import and isolate_git usefixtures; fpm_json copy drops the inlined _GIT_IDENTITY/_isolate_git/_git helpers; help_links and help_root copies pick up the wave-1 test changes), so replaying the PIP copy steps reproduces the merged test tree; PIP, ActionPlan JSON, pyproject.toml and tests/test_help_links.py: cited only, the copy steps and testpaths stay valid once the copies match tests/"
+    }
+  ]
+}

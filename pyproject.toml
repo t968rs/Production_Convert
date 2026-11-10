@@ -6,6 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
     "jsonschema",
     "pydantic>=2",
+    "python-docx>=1.2.0",
     "referencing",
 ]
 
@@ -19,6 +20,10 @@ dev = [
 package = false
 # Resolve only releases at least seven days old; a fresh release waits out the cooldown.
 exclude-newer = "7 days"
+
+[tool.pytest.ini_options]
+# Collect only the repository test tree; the plan copies under docs/ are not test modules.
+testpaths = ["tests"]
 
 [tool.ruff]
 # Runtime is 3.14 (.python-version); code and hints stay 3.11-compatible.

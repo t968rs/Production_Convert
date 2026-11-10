@@ -1,0 +1,466 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.2.0",
+  "pr": 3,
+  "pr_title": "help link swap",
+  "branch": "0003-help-link-swap",
+  "base_branch": "0002-python-env",
+  "base_sha": "db07002a848c9ebefff3bdf5958890fabe077554",
+  "head_sha": "cc0c2d200c5f7c20b5b34664a773fce6ea6a3224",
+  "review_date": "2026-11-10",
+  "verdict": "READY TO MERGE - 15 of 15 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 2988,
+    "deletions": 8,
+    "files_changed": 15,
+    "source": {
+      "additions": 2988,
+      "deletions": 8,
+      "files_changed": 15
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0003/pr3_20261110T183319Z/findings/tests.json",
+    "docs/_scratch/pr_review/0003/pr3_20261110T183319Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0003/pr3_20261110T183319Z/findings/docs.json",
+    "docs/_scratch/pr_review/0003/pr3_20261110T183319Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "test_help_links.py is fully behavioral: it builds real .atbx zips (BOM variants, stored/deflated members, fixed timestamps) and runs swap_atbx_links unstubbed, asserting exact member bytes rather than substrings.",
+    "Refusal tests pin the all-or-nothing contract with _assert_untouched (same bytes and no leftover temp file), including the read-only os.replace and failed-testzip write paths.",
+    "Discriminating edge cases: page on disk but not shipped (proves the shipped set, not the filesystem, is consulted), prose 'file:' text, URL-encoded and case-differing tails, links already at the release prefix, foreign drive and UNC hrefs.",
+    "test_prod_deploy_help_links.py is an end-to-end test over a real git checkout and the real fpm.json, and asserts the source archive bytes never change in real or dry runs.",
+    "The two monkeypatches (swap_atbx_links raising, ZipFile.testzip failing) are fault injection on collaborators with outcome assertions, not mock-chain wiring.",
+    "test_stale_dest_file_does_not_satisfy_a_link and test_link_to_a_denied_source_file_fails first establish the tempting file exists, so a regression to an on-disk check would fail them.",
+    "help_links.py writes through a mkstemp temp beside the archive, validates it (testzip plus re-decode of changed members) and os.replace's it, so any failure leaves the original archive untouched as the module docstring promises.",
+    "All-or-nothing rule is enforced in one place: swap_atbx_links writes only when apply, swap_count > 0, no missing targets and no errors, matching the LinkSwapResult and module docstrings.",
+    "Members are re-encoded with the byte-order mark and encoding they were read with, and non-scanned members, order, timestamps and archive comment are carried over.",
+    "LinkSwap.for_paths uses Path.as_uri for both prefixes, so drive and UNC roots produce the same percent-encoded form, and _missing_targets unquotes tails before a case-insensitive comparison against shipped paths.",
+    "Swap errors stay contained per archive: _swap_archive converts any scan exception into an error string, so the debug-override result and other archives still report normally.",
+    "_load_paths computes the release folder once and applies it to both dest_root and help_root; an empty HELP_ROOT maps to None, and the defaulted help_root keeps two-field ProjectPaths constructions valid.",
+    "The _copy_folder early return for an absent source folder turns a FileNotFoundError traceback for required:false folders into a clean skip, with validate_source still refusing absent required folders.",
+    "Every decision (D1-D4) records the question with code citations, all rejected options, the chosen option and the dated developer amendment, so the D1 non-UNC error rule is traceable to its origin.",
+    "Anchors spot-checked against the merge-base tree (prod_deploy.py:53, 58-69, 107-110, 118-127, 423-424, 432-433) match exactly; the frozen tree equals the merge base tree.",
+    "Sweeps enumerate every ProjectPaths/CopyResult/ProdCopier consumer with the compatibility reasoning, and the code honors it: help_root defaults to None and CopyResult stays four fields.",
+    "TASK-4's hook contract (top-level .atbx selection, single ValueError error, per-archive exception wrapping, error string shapes, D2 patched rule, read-only source scan in a dry run) matches conversion/prod_deploy.py _swap_help_links/_swap_archive line for line.",
+    "The PIP is a faithful render of the JSON: decisions, values, formats, sweeps and test node lists agree between the two files.",
+    "help_links.py rewrites all or nothing: it writes a temp zip beside the archive, validates it with testzip and decodes the changed members, then os.replace. Any failure leaves the original byte-identical with no temp file, and tests cover the read-only and failed-validation cases.",
+    "The shipped set is built from ProdCopier's copied list, not from what is on disk, so a stale dest file or a denied source page cannot satisfy a link. tests/test_prod_deploy_help_links.py pins both with real git checkouts.",
+    "The tests are genuinely behavioral: they build real .atbx zips (BOM variants, stored and deflated members, directory entries) and compare members byte for byte. The only monkeypatches inject faults; none checks wiring.",
+    "D4 fixes a real crash: an absent required: false folder used to raise FileNotFoundError out of run. It now has a guard at prod_deploy.py:380-381 and real and dry-run tests.",
+    "ProjectPaths.help_root defaults to None, so every existing positional two-field construction keeps working, and a test pins that."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Plan copies of the test modules are collectable by a bare pytest run",
+        "file": "docs/PLANS/0001/tests/tests/test_help_links.py",
+        "files": [
+          "docs/PLANS/0001/tests/tests/test_help_links.py",
+          "docs/PLANS/0001/tests/tests/test_prod_deploy_help_links.py",
+          "docs/PLANS/0001/tests/tests/test_prod_deploy_help_root.py",
+          "docs/PLANS/0001/tests/tests/test_fpm_json_help_pages.py",
+          "pyproject.toml",
+          "tests/conftest.py"
+        ],
+        "lines": "1-13",
+        "reviewer": "tests, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The PR commits four test_*.py files under docs/PLANS/0001/tests/tests/ (no __init__.py, no conftest), and pyproject.toml has no [tool.pytest.ini_options] testpaths or norecursedirs. A `pytest` run from the repo root therefore walks docs/ before tests/ and collects these copies as top-level modules (test_help_links, test_prod_deploy_help_links, ...). Under `python -m pytest` they run a second time next to tests/ (and the help-links copy is a stale subset, see the next finding); under the console-script `pytest` the docs modules are imported before tests/conftest.py puts the repo root on sys.path, so `from conversion...` can fail with a collection error. Either way the plan fixtures leak into the suite.\n\nAlso (roast): This PR adds four tracked test modules under docs/PLANS/0001/tests/tests/ (no __init__.py), and pyproject.toml has no [tool.pytest.ini_options] testpaths or norecursedirs. A bare `pytest` from the repo root collects docs/ before tests/. With the pytest entry script (e.g. `uv run pytest`, package = false so `conversion` is not installed), the cwd is not on sys.path and the repo root only joins it once the tests/ package is imported, so the four docs modules fail collection with ModuleNotFoundError: conversion. With `python -m pytest`, they import fine but every help-link test runs twice, and the docs copy of test_help_links.py is already stale (it lacks the two tests at tests/test_help_links.py:289-304). Before this PR, tests/ was the only test tree and a bare run was clean. The planning scaffold now gets into the suite.",
+        "fix": [
+          "Add `[tool.pytest.ini_options]` with `testpaths = [\"tests\"]` to pyproject.toml so only tests/ is collected.",
+          "Or add `norecursedirs = [\"docs\", ...]` to the pytest options in pyproject.toml.",
+          "Or rename the plan copies to a non-collected suffix (e.g. test_help_links.py.txt) and update the copy steps in docs/PLANS/0001_Help_link_swap_PIP.md lines 81, 120, 152 and 226.",
+          "Add `[tool.pytest.ini_options]` with `testpaths = [\"tests\"]` to pyproject.toml so only tests/ is collected by default.",
+          "Or add `norecursedirs = [\"docs\", \".*\", \"build\", \"dist\", \"venv\"]` under `[tool.pytest.ini_options]` in pyproject.toml."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "swap_atbx_links Args describe a narrower contract than the caller uses",
+        "file": "conversion/help_links.py",
+        "files": [
+          "conversion/help_links.py",
+          "conversion/prod_deploy.py"
+        ],
+        "lines": "237-241",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The docstring says 'atbx: The copied archive to rewrite in place' and 'shipped: Repo-relative posix paths of the files the release ships'. prod_deploy._swap_archive passes the source archive (read-only, apply=False) in a dry run, and builds shipped relative to dest_root (release-relative), which is also the base the link tails are compared against (tails follow new_prefix, i.e. the release folder).",
+        "fix": [
+          "Reword the Args: 'atbx: The archive to scan; rewritten in place only when apply is True' and 'shipped: Posix paths, relative to the release folder (dest_root), of the files the release ships'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Docs present DEST_ROOT as a working fallback, but a non-UNC target always fails",
+        "file": "conversion/prod_deploy.py",
+        "files": [
+          "conversion/prod_deploy.py",
+          "project_definitions/fpm.env",
+          "conversion/help_links.py"
+        ],
+        "lines": "7,17-20",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "prod_deploy.py:7 calls HELP_ROOT optional, and prod_deploy.py:17-19 says links are swapped \"to HELP_ROOT, else DEST_ROOT\". fpm.env:6 likewise opens with \"Optional:\". But help_links.py:167-173 (D1) makes any swap onto a non-UNC prefix an error. The tracked fpm.env has a local DEST_ROOT and HELP_ROOT commented out, and the live archive holds one link (PIP Values row 28). So every real run.py deploy with the shipped config now ends with that error and exit 1 until someone sets HELP_ROOT. The behavior is the accepted D1 design. The docstrings just make it sound like a working fallback.",
+        "fix": [
+          "prod_deploy.py:17-20: add that a swapped link pointing at a non-UNC prefix is an error, so a local DEST_ROOT needs a UNC HELP_ROOT once the archive holds a help link.",
+          "fpm.env:6: replace 'Optional:' with wording such as 'Required once the archive holds help links (DEST_ROOT is local):'."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Dry-run patched semantics not stated in ProdCopier and _swap_archive docstrings",
+        "file": "conversion/prod_deploy.py",
+        "lines": "304-305,484",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The ProdCopier class docstring (lines 304-305) says 'an archive swapped without error joins patched', and _swap_archive (line 484) says 'swapped is True when the result is ok with links swapped'. In a dry run nothing is swapped (apply=False on the source archive), yet _swap_archive returns True and the dest path joins CopyResult.patched as the would-be path (plan D2, asserted by test_dry_run_checks_the_source_and_writes_nothing). The debug-override step adds nothing to patched in a dry run, so a reader of the docstrings gets the opposite of what dry-run patched holds for archives.\n\nAlso (roast): prod_deploy.py:304-305 says \"an archive swapped without error joins patched\". Under D2, _swap_archive (prod_deploy.py:487-494) also adds the would-be dest path in a dry run, where nothing is swapped or even copied. This is the opposite of _patch_debug_override, which reports nothing in a dry run (prod_deploy.py:437-438). Anyone reading the class docstring will expect patched to stay empty on a dry run.",
+        "fix": [
+          "Extend the class docstring: 'an archive swapped without error joins patched; in a dry run, an archive that would be swapped joins patched as its dest path', and reword _swap_archive's Returns line to 'swapped is True when the result is ok with at least one link to swap (written in a real run, would-be in a dry run)'.",
+          "prod_deploy.py:304-305: append 'in a dry run, an archive whose source scan is ok with links to swap joins patched as its would-be dest path (D2).'"
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Plan decision ID referenced in production docstring",
+        "file": "conversion/prod_deploy.py",
+        "lines": "456",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "_swap_help_links' docstring ends 'changed at least one link (D2)'. D2 is a decision ID from docs/PLANS/0001_Help_link_swap_PIP.md; the merged code reader cannot resolve it without the plan, and the rule it names is already spelled out in the same sentence.",
+        "fix": [
+          "Drop ' (D2)' from the docstring, or replace it with the plan path if the cross-reference is wanted."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "ProjectPaths.help_root semantics undocumented; LinkSwap.for_paths names env keys instead",
+        "file": "conversion/project_model.py",
+        "files": [
+          "conversion/project_model.py",
+          "conversion/help_links.py",
+          "conversion/prod_deploy.py"
+        ],
+        "lines": "17",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "ProjectPaths.help_root (project_model.py:17) carries HELP_ROOT with the release folder already appended by _load_paths (prod_deploy.py:74), and LinkSwap.for_paths uses it directly as the link prefix. Neither the dataclass nor for_paths states this: for_paths' docstring reads 'SOURCE_ROOT -> HELP_ROOT, else DEST_ROOT', so a caller building ProjectPaths by hand with help_root=Path(HELP_ROOT) (no release folder) gets links one level too high and every target reported missing.",
+        "fix": [
+          "Add a field comment on ProjectPaths.help_root: 'HELP_ROOT / <release folder>; prefix for swapped help links only, None falls back to dest_root', and reword the for_paths docstring to 'source_root -> help_root (HELP_ROOT plus the release folder), else dest_root'."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Plan copy of test_help_links.py lags the shipped test module",
+        "file": "docs/PLANS/0001/tests/tests/test_help_links.py",
+        "files": [
+          "docs/PLANS/0001/tests/tests/test_help_links.py",
+          "tests/test_help_links.py",
+          "docs/PLANS/0001_Help_link_swap_PIP.md"
+        ],
+        "lines": "281-289",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "docs/PLANS/0001_Help_link_swap_PIP.md:152 says to copy docs/PLANS/0001/tests/tests/test_help_links.py to tests/test_help_links.py, but the shipped file has 18 more lines: test_link_already_at_the_release_prefix_is_checked and test_shipped_link_already_at_the_release_prefix_is_ok (tests/test_help_links.py:289-304) are missing from the plan copy (it jumps from test_each_missing_tail_is_reported_once at 281-286 to test_leftover_drive_href_is_an_error at 289). The other three plan copies are byte-identical to their tests/ counterparts. Re-running the plan's copy step would silently drop the release-prefix coverage.",
+        "fix": [
+          "Sync docs/PLANS/0001/tests/tests/test_help_links.py with tests/test_help_links.py (add the two release-prefix tests after line 286).",
+          "Or delete the plan copies once the plan is complete and point the PIP steps at tests/."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Plan branch metadata does not match the PR",
+        "file": "docs/PLANS/0001_Help_link_swap_ActionPlan.json",
+        "files": [
+          "docs/PLANS/0001_Help_link_swap_ActionPlan.json",
+          "docs/PLANS/0001_Help_link_swap_PIP.md"
+        ],
+        "lines": "7-8,630-637",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The plan records \"branch\": null and \"base_branch\": \"main\" (PIP line 7: 'Branch: none -> main') with base/frozen commit 33fe6c3, but the work lives on 0003-help-link-swap targeting 0002-python-env, and 33fe6c3 is not an ancestor of the PR head (git merge-base --is-ancestor exits 1). Its tree 48254d5 equals the merge base db07002's tree, so the anchors stay valid; only the branch and commit provenance read wrong.\n\nAlso (roast): The PIP header (PIP lines 7-9) and ActionPlan.json lines 7-8 record branch none -> main with base 33fe6c3. This PR ships the plan on 0003-help-link-swap targeting 0002-python-env, with merge base db07002. A reader following the plan's anchors from the stated base gets the wrong tree.",
+        "fix": [
+          "Set branch to 0003-help-link-swap and base_branch to 0002-python-env through the driver and render again; optionally note that the frozen tree 48254d5 is also db07002's tree.",
+          "Set branch to 0003-help-link-swap and base_branch to 0002-python-env through plan.py, then re-render the PIP. Or add a note that the anchors were frozen at 33fe6c3 on main."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "TASK-2 ruff command lacks the writes list",
+        "file": "docs/PLANS/0001_Help_link_swap_ActionPlan.json",
+        "lines": "240-243",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "Every command entry in the plan carries \"writes\": [] except TASK-2's second command (the ruff check), which omits the key; the schema is otherwise uniform.",
+        "fix": [
+          "Add \"writes\": [] to the TASK-2 ruff command entry through the driver."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Dangling LIVE_ATBX reference in a value source",
+        "file": "docs/PLANS/0001_Help_link_swap_ActionPlan.json",
+        "files": [
+          "docs/PLANS/0001_Help_link_swap_ActionPlan.json",
+          "docs/PLANS/0001_Help_link_swap_PIP.md"
+        ],
+        "lines": "763",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The 'href tail terminators' value cites 'live archive .rc (see LIVE_ATBX)'; no value, format or decision in the plan is named LIVE_ATBX, so the cross-reference leads nowhere. The intended target is the 'live archive file: hrefs' value.",
+        "fix": [
+          "Replace '(see LIVE_ATBX)' with \"(see the 'live archive file: hrefs' value)\" through the driver and render the PIP again."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Plan still describes the target check as swapped tails only, and its test copy has drifted",
+        "file": "docs/PLANS/0001_Help_link_swap_PIP.md",
+        "files": [
+          "docs/PLANS/0001_Help_link_swap_PIP.md",
+          "docs/PLANS/0001_Help_link_swap_ActionPlan.json",
+          "docs/PLANS/0001/tests/tests/test_help_links.py",
+          "tests/test_help_links.py",
+          "conversion/help_links.py"
+        ],
+        "lines": "40,159,165-189",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "help_links.py:146-148,248 checks every href under the release prefix against shipped, both rewritten links and ones already there, as its own docstring (help_links.py:4-6) says. tests/test_help_links.py:289-304 adds test_link_already_at_the_release_prefix_is_checked and test_shipped_link_already_at_the_release_prefix_is_ok to pin that behavior. The plan was not updated: PIP Values row 40 and TASK-3 step 5 (PIP lines 40, 159; ActionPlan.json line 830) still say \"each swapped tail\". TASK-3's test list (PIP lines 165-189) omits both new tests, and the step 1 source docs/PLANS/0001/tests/tests/test_help_links.py no longer matches tests/test_help_links.py. The code makes the stricter call, and the plan lags it.",
+        "fix": [
+          "Amend TASK-3 step 5 and the 'shipped set' value through plan.py to say every file: href under the release prefix (swapped or already there) is checked. Add the two tests to TASK-3's test list, re-render the PIP, and copy tests/test_help_links.py over docs/PLANS/0001/tests/tests/test_help_links.py."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Swap suites silently assume Windows path semantics for the UNC HELP_ROOT",
+        "file": "tests/test_help_links.py",
+        "files": [
+          "tests/test_help_links.py",
+          "tests/test_prod_deploy_help_links.py"
+        ],
+        "lines": "19,356",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "_HELP_ROOT = Path(\"//srv/share/fpm_releases/FPM_1_0_0\") (tests/test_help_links.py:19) and \"//srv/share/fpm_releases\" (tests/test_prod_deploy_help_links.py:20) become file://srv/share/... only under WindowsPath; on POSIX PurePosixPath('//srv/share/x').as_uri() is 'file:////srv/share/x', which fails help_links._UNC_PREFIX, so every roots-fixture swap with links (and the real-run e2e tests) would report the HELP_ROOT error. The file already guards one test with skipif(os.name != 'nt') (line 356), signalling a portability intent the rest of the module does not meet.",
+        "fix": [
+          "Add a module-level `pytestmark = pytest.mark.skipif(os.name != \"nt\", reason=\"UNC help roots need Windows paths\")` to tests/test_help_links.py and tests/test_prod_deploy_help_links.py (combine with the existing git skip in the latter).",
+          "Or drop the per-test skipif at line 356 and document in the module docstring that the suite is Windows-only."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Unused _decode helper in test_help_links.py",
+        "file": "tests/test_help_links.py",
+        "files": [
+          "tests/test_help_links.py",
+          "docs/PLANS/0001/tests/tests/test_help_links.py"
+        ],
+        "lines": "73-77",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "_decode (tests/test_help_links.py:73-77) is defined but never called; only _encode is used (line 89). It is dead code that also mirrors, but does not exercise, conversion.help_links._decode.",
+        "fix": [
+          "Delete lines 73-77 of tests/test_help_links.py and the same lines of docs/PLANS/0001/tests/tests/test_help_links.py.",
+          "Or use it: decode the rewritten rc in test_byte_order_mark_is_kept and assert the new href is present, as a readable second check beside the byte comparison."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "Git test helpers copied into two more modules",
+        "file": "tests/test_prod_deploy_help_links.py",
+        "files": [
+          "tests/test_prod_deploy_help_links.py",
+          "tests/test_fpm_json_help_pages.py",
+          "tests/conftest.py"
+        ],
+        "lines": "17-49",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "_GIT_IDENTITY, the autouse _isolate_git fixture and _git are duplicated verbatim in tests/test_prod_deploy_help_links.py:17-49 and tests/test_fpm_json_help_pages.py:12-41, on top of the existing copies in test_prod_deploy_dirty.py and test_prod_deploy_tracked.py, while tests/conftest.py is empty. Four copies of the isolation fixture drift independently.",
+        "fix": [
+          "Move _GIT_IDENTITY and a `git` helper into tests/conftest.py (or a tests/_git.py module) and expose the isolation as a fixture the git-using modules request; drop the local copies."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Plan records and TASK-3 contract predate the shipped help_links behavior",
+        "file": "docs/PLANS/0001_Help_link_swap_ActionPlan.json",
+        "files": [
+          "docs/PLANS/0001_Help_link_swap_ActionPlan.json",
+          "docs/PLANS/0001_Help_link_swap_PIP.md",
+          "docs/PLANS/0001/tests/tests/test_help_links.py",
+          "conversion/help_links.py",
+          "tests/test_help_links.py"
+        ],
+        "lines": "271,280-322,465,476,829-831",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "TASK-3 action step 5 says only each swapped tail is checked against shipped, and the 'shipped set' value repeats it (\"each swapped tail is URL-decoded and compared\"). The merged conversion/help_links.py:146-148,248 checks every file: href under the release prefix, rewritten or already there (scan.linked from _sort_hrefs), and its module docstring (help_links.py:4-6) says so. That change, plus two tests (tests/test_help_links.py: test_link_already_at_the_release_prefix_is_checked, test_shipped_link_already_at_the_release_prefix_is_ok), landed after the sealed records: neither the TASK-3 tree 9e038a5 nor the TASK-4 tree cdfff33 contains them (git grep finds no 'linked'/'already_at_the_release_prefix' there). The plan therefore claims '25 test node(s) passed' as evidence for code that is not the code being merged, lists 25 nodes while the shipped file holds 27, and step 1 'Copy docs/PLANS/0001/tests/tests/test_help_links.py' now produces a file 18 lines short of tests/test_help_links.py.\n\nAlso (docs): TASK-3 and TASK-4 step 0 make execution wait for the spec's 'Gate: links work in Pro' (developer confirms ArcGIS Pro follows a file: link from a tool's '?' page), with --blocked on failure. Both tasks are COMPLETE, but neither evidence nor notes says when or how the gate passed, so the merged plan cannot show the precondition was met.",
+        "fix": [
+          "Through the plan driver: amend TASK-3 step 5 and the 'shipped set' value to 'every href under new_prefix, swapped or already present', add the two test nodes to TASK-3's tests, re-record TASK-3 and TASK-4 against the head tree, render the PIP again, and copy tests/test_help_links.py over docs/PLANS/0001/tests/tests/test_help_links.py.",
+          "If the sealed records must stay as they are, add a TASK-3 note via the driver stating the post-record change (release-prefix links already present are checked too, two added tests) with the commit that carries it (4e7bb22), and sync the plan test copy.",
+          "Add the gate result (date and what was confirmed) to the TASK-3 and TASK-4 notes or evidence through the driver, then render the PIP again."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 3 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"0002-python-env\",\"commits_count\":5,\"first_sha\":\"cb80a5fb8b9de0bbfda9b960daa932e44a0f4164\",\"headRefName\":\"0003-help-link-swap\",\"headRefOid\":\"cc0c2d200c5f7c20b5b34664a773fce6ea6a3224\",\"last_sha\":\"cc0c2d200c5f7c20b5b34664a773fce6ea6a3224\",\"mergeCommit\":null,\"number\":3,\"state\":\"OPEN\",\"title\":\"help link swap\",\"url\":\"https://github.com/t968rs/Production_Convert/pull/3\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0003-help-link-swap",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0003-help-link-swap",
+        "head_ref_name": "0003-help-link-swap",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "cb80a5fb8b9de0bbfda9b960daa932e44a0f4164",
+        "head_sha": "cc0c2d200c5f7c20b5b34664a773fce6ea6a3224",
+        "base_ancestor_command": "git merge-base --is-ancestor cb80a5fb8b9de0bbfda9b960daa932e44a0f4164 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor cc0c2d200c5f7c20b5b34664a773fce6ea6a3224 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "0002-python-env",
+        "result": "OK (recorded; not the configured base main)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "cc0c2d2 (working-tree snapshot; developer commits) - PIP copy step (line 152) names the docs plan copy as its source; the stale copy is synced by the other part's fixer (docs/PLANS/0001/tests/tests/test_help_links.py), so the PIP text needs no edit; Added test_link_already_at_the_release_prefix_is_checked and test_shipped_link_already_at_the_release_prefix_is_ok to the plan copy after test_each_missing_tail_is_reported_once; plan copy now byte-identical to tests/test_help_links.py after this wave's edits. tests/test_help_links.py: source of the sync, no edit for M6"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "cc0c2d2 (working-tree snapshot; developer commits) - replaced '(see LIVE_ATBX)' with \"(see the 'live archive file: hrefs' value)\" in the 'href tail terminators' row (line 30); docs/PLANS/0001_Help_link_swap_ActionPlan.json 'href tail terminators' source (line ~763): '(see LIVE_ATBX)' replaced with \"(see the 'live archive file: hrefs' value)\"."
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "cc0c2d2 (working-tree snapshot; developer commits) - Args wording defect lives in conversion/help_links.py swap_atbx_links (other part, not edited here); the prod_deploy.py call site already matches the corrected contract (source archive in dry run, dest_root-relative shipped), so no edit in this part; conversion/help_links.py swap_atbx_links Args: atbx now 'archive to scan; rewritten in place only when apply is True'; shipped now 'posix paths, relative to the release folder (dest_root)'."
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "cc0c2d2 (working-tree snapshot; developer commits) - prod_deploy.py module docstring: added that a swapped link onto a non-UNC prefix is an error, so a local DEST_ROOT needs a UNC HELP_ROOT once the archive holds a help link; fpm.env line 6: 'Optional:' replaced with 'Required once the archive holds help links (DEST_ROOT is local):'; No edit in this part. The D1 non-UNC error is cited at conversion/help_links.py:167-173 as the accepted behavior; the docstring and fpm.env wording fixes are in the other parts (prod_deploy.py, project_definitions/fpm.env)."
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "cc0c2d2 (working-tree snapshot; developer commits) - ProdCopier class docstring: added that in a dry run an archive whose source scan is ok with links to swap joins patched as its would-be dest path; _swap_archive Returns line reworded to 'at least one link to swap (written in a real run, would-be in a dry run)'"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "cc0c2d2 (working-tree snapshot; developer commits) - _swap_help_links docstring: dropped ' (D2)' plan decision ID; the rule stays spelled out in the sentence"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "cc0c2d2 (working-tree snapshot; developer commits) - _load_paths: added a comment at the help_root assignment stating it is HELP_ROOT plus the release folder, the prefix swapped help links point at; ProjectPaths field comment (conversion/project_model.py) and LinkSwap.for_paths docstring (conversion/help_links.py) belong to other parts and are not edited here; conversion/project_model.py:17 field comment added on ProjectPaths.help_root (HELP_ROOT / release folder; None falls back to dest_root); conversion/help_links.py:55 LinkSwap.for_paths docstring reworded to source_root -> help_root (HELP_ROOT plus the release folder), else dest_root."
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "cc0c2d2 (working-tree snapshot; developer commits) - Module-level pytestmark skipif(os.name != 'nt', 'UNC help roots need Windows paths') in tests/test_help_links.py; folded into a pytestmark list beside the git skip in tests/test_prod_deploy_help_links.py; mirrored into the plan copy to keep it in sync"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "cc0c2d2 (working-tree snapshot; developer commits) - Deleted the unused _decode helper from tests/test_help_links.py and the plan copy"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "cc0c2d2 (working-tree snapshot; developer commits) - New tests/_git.py holds GIT_IDENTITY and git(); tests/conftest.py gains a non-autouse isolate_git fixture; test_prod_deploy_help_links.py and test_fpm_json_help_pages.py drop their local copies, import git from tests._git and request isolate_git via pytestmark usefixtures (test_prod_deploy_dirty.py/test_prod_deploy_tracked.py are outside the file set and keep their copies)"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "cc0c2d2 (working-tree snapshot; developer commits) - docs/PLANS/0001_Help_link_swap_ActionPlan.json TASK-2 ruff check command (line ~241): added \"writes\": []."
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "cc0c2d2 (working-tree snapshot; developer commits) - Through plan_api: branch 0003-help-link-swap, base_branch 0002-python-env, TASK-1 note that base 33fe6c3's tree 48254d5 equals merge base db07002's tree; plan.py freeze --refreeze (frozen now at cc0c2d2 on the branch, digest restored, check ok) and render (PIP header: 0003-help-link-swap -> 0002-python-env, Frozen at cc0c2d2). base_commit is owned by plan.py new and stays 33fe6c3."
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "cc0c2d2 (working-tree snapshot; developer commits) - Through plan_api: TASK-3 step 5 and the 'shipped set' value now say every file: href under new_prefix, swapped or already present, is checked against shipped; TASK-3 note names the two added tests; refreeze + render (PIP lines 40, 159). The TASK-3 tests list keeps its 25 sealed nodes: adding nodes breaks the seal and a re-record needs a staged index (git write), so the note carries them. Cited files: docs/PLANS/0001/tests/tests/test_help_links.py already present, byte-identical to tests/test_help_links.py (blob 4a14a78) including both tests; conversion/help_links.py and tests/test_help_links.py are the reference, no edit needed."
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "cc0c2d2 (working-tree snapshot; developer commits) - Option 2 through plan_api: TASK-3 note states the post-record change (release-prefix links already present are checked, scan.linked at conversion/help_links.py:146-148,248; tests test_link_already_at_the_release_prefix_is_checked and test_shipped_link_already_at_the_release_prefix_is_ok) carried by commit 4e7bb22, and that the sealed record (tree 9e038a5, 25 nodes) predates it; step 5 and 'shipped set' amended; refreeze keeps every seal valid, render, check ok. Plan test copy already in sync (blob 4a14a78). Gate date not added: no record of when it passed. Cited files need no edit."
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "cc0c2d2 (working-tree snapshot; developer commits) - pyproject.toml [tool.pytest.ini_options] testpaths = [tests]; bare pytest collects 73 nodes, none under docs/PLANS (outside fixer waves)"
+    }
+  ]
+}

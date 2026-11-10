@@ -2,7 +2,7 @@ import argparse
 import sys
 from pathlib import Path
 from functools import lru_cache
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 _REPO_SCRIPTS_FOLDER_NAME = "conversion"
 
@@ -90,6 +90,14 @@ def _resolve_version(args: argparse.Namespace) -> str:
     return answer
 
 
+def _report_unshippable(dest_root: Path, patched: Sequence[Path]) -> None:
+    """Warn that the failed run's dest_root must not ship, naming each unswapped top-level .atbx."""
+    print(f"NOT SHIPPABLE: {dest_root} - do not copy it to the release share.", file=sys.stderr)
+    for atbx in sorted(dest_root.glob("*.atbx")):
+        if atbx not in patched:
+            print(f"\tHelp links not swapped: {atbx}", file=sys.stderr)
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     target_version = _resolve_version(_get_args(argv))
 
@@ -106,6 +114,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not result.ok:
         for err in result.errors:
             print(f"\tERROR: {err}", file=sys.stderr)
+        _report_unshippable(paths.dest_root, result.patched)
         print("Failed.", file=sys.stderr)
         return 1
 
