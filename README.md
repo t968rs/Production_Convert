@@ -6,7 +6,7 @@ converts the project's `CHANGELOG.md` into a styled Word document for toolbox us
 A release run:
 
 1. copies the git-tracked files a project definition allows into `<DEST_ROOT>/FPM_<version>`;
-2. turns the debug switch off (`_debug_override = True` becomes `False`) in the copied package;
+2. sets `_debug_override = True` to `False` in the copied package when present;
 3. rewrites the help links inside each copied `.atbx` from the development checkout to the release folder,
    and checks that every linked help page ships with the release.
 
@@ -62,7 +62,7 @@ from scratch, delete its `FPM_<version>` folder first.
 
 | Code | Meaning |
 |---|---|
-| 0 | Every file copied, debug switch patched, help links swapped. |
+| 0 | Every file copied, debug switch patched when present, and every help link in a copied archive swapped and shipped. |
 | 1 | At least one error; the release folder, if written, is not shippable. |
 | 2 | Usage error: no version, conflicting versions or an unknown flag. |
 
@@ -71,14 +71,16 @@ from scratch, delete its `FPM_<version>` folder first.
 | Message | Cause | Fix |
 |---|---|---|
 | `required folder absent: ...` | A folder marked `"required": true` in `fpm.json` is missing from `SOURCE_ROOT`. | Point `SOURCE_ROOT` at the right checkout, or mark the folder optional. |
-| `git ls-files failed in ...` | `SOURCE_ROOT` is not a git repository, or git is not on `PATH`. | Fix the path or install git. |
+| `git ls-files failed in ...` | `SOURCE_ROOT` is not a git repository. | Point `SOURCE_ROOT` at the git checkout. |
+| `git not found on PATH: ...` | git is not installed or not on `PATH`. | Install git or add it to `PATH`. |
 | `debug_override_rel not found in dest: ...` | The file named by `debug_override_rel` was not copied. | Check that the path is right and that the file is tracked and allowed. |
 | `help link target missing in <archive>: <path>` | A tool's help page links a file the release does not ship. | Track and allow the file (for example under `tool_metadata/tool_help/`), or fix the link in the toolbox. |
 | `help link error in <archive>: ...` | A link points outside the development checkout, or the new prefix is not a UNC path. | Set `HELP_ROOT` to the UNC release share. |
 
 ## Configure paths
 
-`project_definitions/fpm.env` holds the machine paths, one `KEY=VALUE` per line (`#` starts a comment):
+`project_definitions/fpm.env` holds the machine paths, one `KEY=VALUE` per line. A line starting with `#` is a
+comment; trailing comments after a value are not supported:
 
 ```ini
 SOURCE_ROOT=E:/automation/toolboxes/floodplain_development
@@ -114,7 +116,8 @@ pointing at the development checkout. The source archive is never modified.
 
 ## Choose what ships
 
-`project_definitions/fpm.json` decides which files are copied:
+`project_definitions/fpm.json` decides which files are copied. An excerpt of `fpm.json` (the tracked
+file denies more globs and lists more folders):
 
 ```json
 {
@@ -148,7 +151,7 @@ The command line always writes. To list what a release would contain without wri
 copier with `dry_run=True`:
 
 ```powershell
-uv run python -c "from conversion.prod_deploy import load_project, ProdCopier; cfg, paths = load_project('fpm', 'v3.17.2'); r = ProdCopier(cfg, paths, dry_run=True).run(); print(len(r.copied), 'files'); print(*r.errors, sep='\n')"
+uv run python -c "from conversion.prod_deploy import load_project, ProdCopier; cfg, paths = load_project('fpm', 'v3.17.2'); r = ProdCopier(cfg, paths, dry_run=True).run(); print(*r.copied, sep='\n'); print(len(r.copied), 'files'); print(*r.errors, sep='\n')"
 ```
 
 A dry run checks the help links of the source archive read-only and reports the same link errors a
@@ -172,8 +175,9 @@ uv run python -m conversion.changelog_docx E:\automation\toolboxes\floodplain_de
 
 The document uses Word's built-in heading styles, so the navigation pane lists every release, tool and
 change type. Code terms (anything in backticks, plus identifiers found in plain text: snake_case,
-camelCase, PascalCase and dotted names, file names and paths) render in a dark red monospace font inside visible backticks. An empty `Unreleased`
-section, empty subheadings and the Keep a Changelog boilerplate line are left out.
+camelCase, PascalCase and dotted names, file names and paths) render in a dark red monospace font
+inside visible backticks. Any release section with no content (for example an empty `Unreleased`) is
+left out with its subheadings, as is the Keep a Changelog boilerplate line.
 
 ## Add another project
 
@@ -190,12 +194,14 @@ result = ProdCopier(cfg, paths).run()
 
 ## Development
 
-Run the tests by file:
+Run the full test suite and lint (`pyproject.toml` limits collection to `tests/`):
 
 ```powershell
-uv run pytest tests/test_prod_deploy_tracked.py tests/test_help_links.py
+uv run pytest
 uv run ruff check conversion tests
 ```
+
+To run a single file, name it, for example `uv run pytest tests/test_help_links.py`.
 
 | Path | Role |
 |---|---|
@@ -205,4 +211,4 @@ uv run ruff check conversion tests
 | `conversion/project_model.py` | `ProjectPaths` and the `fpm.json` models. |
 | `conversion/changelog_docx.py` | Markdown changelog to `.docx`. |
 | `project_definitions/` | Per-project copy rules (`.json`) and paths (`.env`). |
-| `dev2prod_DEP.py`, `project_definitions/prod_deploy.json` | Earlier copier and its config; deprecated, not used by `run.py`. |
+| `project_definitions/prod_deploy.json` | Earlier project definition; has no `prod_deploy.env`, so it cannot be loaded. Not used by `run.py`. |
