@@ -1,7 +1,7 @@
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class ProjectPaths:
     source_root:    Path
     dest_root:      Path
+    help_root:      Optional[Path] = None
 
 
 # ---------------------------------------------------------------------------
