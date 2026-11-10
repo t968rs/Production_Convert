@@ -43,6 +43,7 @@ desktop.ini
 _in_progress/**
 prod_results/
 *settings.local.json
+*.env
 
 # Temp / Untracked
 */_scratch/
