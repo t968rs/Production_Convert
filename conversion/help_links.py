@@ -52,7 +52,7 @@ class LinkSwap:
 
     @classmethod
     def for_paths(cls, paths: ProjectPaths) -> LinkSwap:
-        """Prefixes from a project's paths: SOURCE_ROOT -> HELP_ROOT, else DEST_ROOT."""
+        """Prefixes from a project's paths: source_root -> help_root (HELP_ROOT plus the release folder), else dest_root."""
         target = paths.help_root if paths.help_root is not None else paths.dest_root
         return cls(paths.source_root.as_uri() + "/", target.as_uri() + "/")
 
@@ -235,9 +235,9 @@ def swap_atbx_links(atbx: Path, swap: LinkSwap, shipped: FrozenSet[str], apply: 
     """Swap the help-link prefix in atbx and check every release-prefix link against the shipped files.
 
     Args:
-        atbx: The copied archive to rewrite in place.
+        atbx: The archive to scan; rewritten in place only when apply is True.
         swap: The old and new href prefixes.
-        shipped: Repo-relative posix paths of the files the release ships.
+        shipped: Posix paths, relative to the release folder (dest_root), of the files the release ships.
         apply: False reports what would change and never writes.
 
     Returns:

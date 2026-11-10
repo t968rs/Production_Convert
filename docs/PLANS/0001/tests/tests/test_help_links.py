@@ -13,6 +13,8 @@ import pytest
 from conversion.help_links import LinkSwap, LinkSwapResult, swap_atbx_links
 from conversion.project_model import ProjectPaths
 
+pytestmark = pytest.mark.skipif(os.name != "nt", reason="UNC help roots need Windows paths")
+
 _PAGE = "tool_metadata/tool_help/smooth_simplify.html"
 _GONE = "tool_metadata/tool_help/gone.html"
 _SHIPPED: FrozenSet[str] = frozenset({_PAGE, "scripts/fpm/__init__.py"})
@@ -68,13 +70,6 @@ def _encode(text: str, encoding: str) -> bytes:
     if encoding in ("utf-16-le", "utf-16-be"):
         return _BOMS[encoding] + text.encode(encoding)
     return text.encode(encoding)
-
-
-def _decode(data: bytes) -> str:
-    for encoding, bom in _BOMS.items():
-        if data.startswith(bom):
-            return data[len(bom):].decode(encoding.replace("-sig", ""))
-    return data.decode("utf-8")
 
 
 def _xml(*hrefs: str, prose: str = "") -> bytes:
@@ -284,6 +279,24 @@ def test_each_missing_tail_is_reported_once(roots):
     _build(roots.atbx, [(_XML, xml), (_RC, _rc(roots.href(_GONE), roots.href(lost)))])
     result = _swap(roots)
     assert sorted(result.missing_targets) == sorted([_GONE, lost])
+
+
+def test_link_already_at_the_release_prefix_is_checked(roots):
+    _build(roots.atbx, [(_XML, _xml(roots.new_href(_GONE))), (_RC, _rc(roots.href()))])
+    before = roots.atbx.read_bytes()
+    result = _swap(roots)
+    assert not result.ok
+    assert result.missing_targets == (_GONE,)
+    assert result.swap_count == 1
+    _assert_untouched(roots, before)
+
+
+def test_shipped_link_already_at_the_release_prefix_is_ok(roots):
+    _build(roots.atbx, [(_XML, _xml(roots.new_href())), (_RC, _rc(roots.href()))])
+    result = _swap(roots)
+    assert result.ok, (result.missing_targets, result.errors)
+    assert result.swap_count == 1
+    assert result.changed_members == (_RC,)
 
 
 def test_leftover_drive_href_is_an_error(roots):

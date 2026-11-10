@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class ProjectPaths:
     source_root:    Path
     dest_root:      Path
+    # HELP_ROOT / <release folder>; prefix for swapped help links only, None falls back to dest_root.
     help_root:      Optional[Path] = None
 
 

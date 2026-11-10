@@ -16,8 +16,9 @@ copied anyway (working-tree contents, not the committed release).
 
 After the debug-override patch, each top-level .atbx copy has its development
 help links (SOURCE_ROOT) swapped to HELP_ROOT, else DEST_ROOT; a link whose
-target the release does not ship is an error. A dry run scans the source
-archive read-only.
+target the release does not ship is an error. A swapped link onto a non-UNC
+prefix is also an error, so a local DEST_ROOT needs a UNC HELP_ROOT once the
+archive holds a help link. A dry run scans the source archive read-only.
 """
 
 from __future__ import annotations
@@ -71,6 +72,7 @@ def _load_paths(env_path: Path, target_version: str) -> ProjectPaths:
     return ProjectPaths(
         source_root=Path(data["SOURCE_ROOT"]),
         dest_root=Path(data["DEST_ROOT"]) / folder,
+        # HELP_ROOT plus the release folder: the prefix swapped help links point at.
         help_root=Path(help_value) / folder if help_value else None,
     )
 
@@ -302,7 +304,9 @@ class ProdCopier:
     clean_dest: Delete dest_root before copying (ensures no stale files).
 
     After the debug-override patch, run swaps the help links of the top-level
-    .atbx copies; an archive swapped without error joins patched.
+    .atbx copies; an archive swapped without error joins patched. In a dry run,
+    an archive whose source scan is ok with links to swap joins patched as its
+    would-be dest path.
     """
 
     _DEBUG_PATTERN = re.compile(r"(_debug_override\s*=\s*)True")
@@ -453,7 +457,7 @@ class ProdCopier:
 
         shipped is every copied path relative to dest_root, so a link to a file
         the release does not ship is a missing target. An archive joins patched
-        only when its swap is ok and changed at least one link (D2).
+        only when its swap is ok and changed at least one link.
         """
         dest_root = self._paths.dest_root
         archives = [
@@ -481,7 +485,8 @@ class ProdCopier:
         """
         Swap one archive: the dest copy in a real run, the source read-only in a dry run.
 
-        Returns (swapped, errors); swapped is True when the result is ok with links swapped.
+        Returns (swapped, errors); swapped is True when the result is ok with at least one
+        link to swap (written in a real run, would-be in a dry run).
         """
         name = dest_atbx.name
         target = self._paths.source_root / name if self._dry_run else dest_atbx

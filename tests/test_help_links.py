@@ -13,6 +13,8 @@ import pytest
 from conversion.help_links import LinkSwap, LinkSwapResult, swap_atbx_links
 from conversion.project_model import ProjectPaths
 
+pytestmark = pytest.mark.skipif(os.name != "nt", reason="UNC help roots need Windows paths")
+
 _PAGE = "tool_metadata/tool_help/smooth_simplify.html"
 _GONE = "tool_metadata/tool_help/gone.html"
 _SHIPPED: FrozenSet[str] = frozenset({_PAGE, "scripts/fpm/__init__.py"})
@@ -68,13 +70,6 @@ def _encode(text: str, encoding: str) -> bytes:
     if encoding in ("utf-16-le", "utf-16-be"):
         return _BOMS[encoding] + text.encode(encoding)
     return text.encode(encoding)
-
-
-def _decode(data: bytes) -> str:
-    for encoding, bom in _BOMS.items():
-        if data.startswith(bom):
-            return data[len(bom):].decode(encoding.replace("-sig", ""))
-    return data.decode("utf-8")
 
 
 def _xml(*hrefs: str, prose: str = "") -> bytes:

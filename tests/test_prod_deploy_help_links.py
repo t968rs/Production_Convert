@@ -1,7 +1,7 @@
 """End-to-end tests: ProdCopier.run swaps help links in the copied .atbx and never in the source archive."""
 import json
+import os
 import shutil
-import subprocess
 import zipfile
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -11,12 +11,14 @@ import pytest
 import conversion.prod_deploy as prod_deploy
 from conversion.prod_deploy import _PROJECT_DEF_DIR, CopyResult, ProdCopier, load_project
 from conversion.project_model import ProdConfig, ProjectPaths
+from tests._git import git as _git
 
-pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
+pytestmark = [
+    pytest.mark.skipif(shutil.which("git") is None, reason="git not installed"),
+    pytest.mark.skipif(os.name != "nt", reason="UNC help roots need Windows paths"),
+    pytest.mark.usefixtures("isolate_git"),
+]
 
-_GIT_IDENTITY = (
-    "-c", "user.name=test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false",
-)
 _HELP_ROOT = "//srv/share/fpm_releases"
 _VERSION = "v1.0.0"
 _ATBX = "floodplain_mapping.atbx"
@@ -35,18 +37,6 @@ _SOURCE_FILES = {
     _FRAGMENT: "<section></section>\n",
     "tool_metadata/tool_help/_template.html": "$title\n",
 }
-
-
-@pytest.fixture(autouse=True)
-def _isolate_git(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep git discovery inside tmp_path, independent of any enclosing repo or env overrides."""
-    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path))
-    monkeypatch.delenv("GIT_DIR", raising=False)
-    monkeypatch.delenv("GIT_WORK_TREE", raising=False)
-
-
-def _git(root: Path, *args: str) -> None:
-    subprocess.run(["git", *_GIT_IDENTITY, "-C", str(root), *args], check=True, capture_output=True)
 
 
 def _archive(path: Path, href: Optional[str]) -> None:

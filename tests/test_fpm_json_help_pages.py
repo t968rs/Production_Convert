@@ -1,6 +1,5 @@
 """Tests that project_definitions/fpm.json ships the built help pages and keeps their sources out."""
 import shutil
-import subprocess
 from pathlib import Path
 from typing import Iterable
 
@@ -8,10 +7,10 @@ import pytest
 
 from conversion.prod_deploy import _PROJECT_DEF_DIR, ProdCopier, _walk_folder, load_project
 from conversion.project_model import FolderSpec, ProdConfig, ProjectPaths
+from tests._git import git as _git
 
-_GIT_IDENTITY = (
-    "-c", "user.name=test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false",
-)
+pytestmark = pytest.mark.usefixtures("isolate_git")
+
 _SHIPPED = (
     "tool_metadata/tool_help/smooth_simplify.html",
     "tool_metadata/tool_help/img/flow.png",
@@ -27,18 +26,6 @@ _KEPT_OUT = (
 )
 _UNTRACKED_PAGE = "tool_metadata/tool_help/draft.html"
 _REQUIRED_SOURCE = ("scripts/fpm/__init__.py", "calcs/calc.py", "reference/notes.txt")
-
-
-@pytest.fixture(autouse=True)
-def _isolate_git(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep git discovery inside tmp_path, independent of any enclosing repo or env overrides."""
-    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path))
-    monkeypatch.delenv("GIT_DIR", raising=False)
-    monkeypatch.delenv("GIT_WORK_TREE", raising=False)
-
-
-def _git(root: Path, *args: str) -> None:
-    subprocess.run(["git", *_GIT_IDENTITY, "-C", str(root), *args], check=True, capture_output=True)
 
 
 def _fpm_config() -> ProdConfig:
